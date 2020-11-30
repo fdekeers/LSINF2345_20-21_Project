@@ -1,5 +1,5 @@
 - module (peer_sampling).
-- export ([selectPeer/2]).
+- export ([selectPeer/2, pickOldestPeer/1]).
 
 % Updates the view of a node.
 %   NodeId: node to update the view
@@ -23,13 +23,28 @@ selectPeer(Peers, rand) ->
   Rand = rand:uniform(length(Peers)),
   pickPeerN(Peers, Rand-1);
 selectPeer(Peers, tail) ->
-  pickPeerN(Peers, length(Peers)-1).
+  pickOldestPeer(Peers).
 
 % Returns the node at index N in the list of peers (index starts at 0).
 pickPeerN([H|_], 0) ->
   H;
 pickPeerN([_|T], N) ->
   pickPeerN(T, N-1).
+
+% Returns the oldest node from the list of peers.
+% A peer is a tuple {PeerId, Year}.
+% The oldest peer is the one with the smallest Year.
+pickOldestPeer(Peers) ->
+  pickOldestPeer(Peers, {0, infinity}).
+pickOldestPeer([{HId, HYear}|T], {PeerId, Year}) ->
+  if
+    HYear =< Year ->
+      pickOldestPeer(T, {HId, HYear});
+    true ->
+      pickOldestPeer(T, {PeerId, Year})
+  end;
+pickOldestPeer([], {PeerId, Year}) ->
+  {PeerId, Year}.
 
 
 %%% VIEW PROPAGATION %%%
