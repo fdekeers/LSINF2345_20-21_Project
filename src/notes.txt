@@ -1,0 +1,5 @@
+PEER-SAMPLING SERVICE
+
+Each node maintains
+  - Address to send/receive messages (NodePid)
+  - View of the peers (list of neighbours) -> contains NodeIds of other nodes.
