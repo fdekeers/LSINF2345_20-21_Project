@@ -1,0 +1,6 @@
+# Convergence behavior of PS service (healer), in-degree per cycle
+# [number of cycle] [in-degree, average] [in-degree, standard deviation]
+1 10 1.56
+20 8.8 2.56
+40 7.6 2.10
+
