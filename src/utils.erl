@@ -1,15 +1,17 @@
 - module (utils).
-- export ([selectPeer/2, pushView/5]).
+- export ([selectPeer/2, propagateView/5, filterFresh/1]).
 
-% Updates the view of a node.
-%   NodeId: node to update the view
-%   Peers: view of this node
-%   Selection: rand or tail, defines if the neighbour to gossip with is chosen
-%              at random or if it will be the oldest one.
-%   Propagation: push or pushpull, defines if the node sends its local view or
-%                exchanges it.
-%   Selection
-%getPeer(NodeId, Peers, Selection, Propagation, Selection) ->
+%%% UTILITARY FUNCTIONS %%%
+% Sorts the view by decreasing order of freshness.
+sort(View) ->
+  % Anonymous sorting function, based on the freshness.
+  Fun = fun({_, CycleA}, {_, CycleB}) -> CycleA >= CycleB end,
+  lists:sort(Fun, View).
+
+% Gets a random element from a list.
+pickRandom(List) ->
+  Rand = rand:uniform(length(List)),
+  lists:nth(Rand, List).
 
 % Permute: put the H oldest elements at the end,
 % and the elements that will be sent at the beginning.
@@ -18,13 +20,6 @@
 %   - Build a list without the H oldest elements (the first elements)
 %   - Take 3 random elements from the second list, build a list with them
 %   - Build the resulting list: Taken elements + remaining elements + old elements
-
-% Sorts the view by decreasing order of freshness.
-sort(View) ->
-  % Anonymous sorting function, based on the freshness.
-  Fun = fun({_, CycleA}, {_, CycleB}) -> CycleA >= CycleB end,
-  lists:sort(Fun, View).
-
 permute(View, H) ->
   SortedView = sort(View),
   IndexH = length(SortedView) - H,
@@ -46,20 +41,22 @@ takeNRandomPeers(FreshestPeers, OldestPeers, 0, Acc) ->
 takeNRandomPeers([], OldestPeers, N, Acc) ->
   Peer = pickRandom(OldestPeers),
   NewOldestPeers = lists:delete(Peer, OldestPeers),
-  {PeerPid, Cycle} = Peer,
+  {PeerPid, _} = Peer,
   takeNRandomPeers([], NewOldestPeers, N-1, [PeerPid|Acc]);
 % Take from the freshest peers.
 takeNRandomPeers(FreshestPeers, OldestPeers, N, Acc) ->
   Peer = pickRandom(FreshestPeers),
   NewFreshestPeers = lists:delete(Peer, FreshestPeers),
-  {PeerPid, Cycle} = Peer,
+  {PeerPid, _} = Peer,
   takeNRandomPeers(NewFreshestPeers, OldestPeers, N-1, [PeerPid|Acc]).
 
-
-% Gets a random element from a list.
-pickRandom(List) ->
-  Rand = rand:uniform(length(List)),
-  lists:nth(Rand, List).
+% Adds the cycle to the list of peers.
+setCycle(Peers, Cycle) ->
+  setCycle(Peers, Cycle, []).
+setCycle([], _, Acc) ->
+  lists:reverse(Acc);
+setCycle([H|T], Cycle, Acc) ->
+  setCycle(T, Cycle, [{H, Cycle}|Acc]).
 
 
 %%% PEER SELECTION %%%
@@ -90,18 +87,57 @@ pickOldestPeer([], {PeerId, Cycle}) ->
 
 
 %%% VIEW PROPAGATION %%%
-propagateView(FromPid, PeerPid, Cycle, View, {push, H}) ->
+propagateView(FromPid, PeerPid, Cycle, View, {push, H, S}) ->
   pushView(FromPid, PeerPid, Cycle, View, H);
-propagateView(FromPid, PeerPid, Cycle, View, {pushpull, H}) ->
-  pushView(FromPid, PeerPid, Cycle, View, H).
+propagateView(FromPid, PeerPid, Cycle, View, {pushpull, H, S}) ->
+  pushPullView(FromPid, PeerPid, Cycle, View, {H, S}).
 
 pushView(FromPid, PeerPid, Cycle, View, H) ->
   PermutedView = permute(View, H),
   PeersToSend = lists:sublist(PermutedView, 3),
-  PeerPid ! {push, {FromPid, Cycle, PeersToSend}}.
+  PeerPid ! {FromPid, Cycle, PeersToSend}.
 
-pushPullView(FromPid, PeerPid, Cycle, View, H) ->
-  PeerPid ! {pushpull, View, FromPid},
+pushPullView(FromPid, PeerPid, Cycle, View, {H, S}) ->
+  pushView(FromPid, PeerPid, Cycle, View, H),
   receive
-    {response, View} -> View
+    {PeerPid, PeerCycle, PeersSent} ->
+      PeerView = setCycle(PeersSent, PeerCycle),
+      selectView(View, PeerView, H, S)
   end.
+
+
+%%% VIEW SELECTION %%%
+selectView(View, PeerView, H, S) ->
+  FullView = View ++ PeerView.
+
+% Removes the elements of the view that have the same Pid, but that are older.
+keepFresher(View, Peer, Index) ->
+  keepFresher(View, Peer, Index, 0, []).
+keepFresher([], _, _, _, Acc) ->
+  lists:reverse(Acc);
+keepFresher([H|T], Peer, BaseIndex, BaseIndex, Acc) ->
+  keepFresher(T, Peer, BaseIndex, BaseIndex+1, [H|Acc]);
+keepFresher([{BasePid, BaseCycle}|T], {BasePid, BaseCycle}, BaseIndex, CurIndex, Acc) ->
+  if
+    CurIndex > BaseIndex ->
+      keepFresher(T, {BasePid, BaseCycle}, BaseIndex, CurIndex+1, Acc);
+    true ->
+      keepFresher(T, {BasePid, BaseCycle}, BaseIndex, CurIndex+1, [{BasePid, BaseCycle}|Acc])
+  end
+keepFresher([{BasePid, CurCycle}|T], {BasePid, BaseCycle}, BaseIndex, CurIndex, Acc) ->
+  if
+    CurCycle < BaseCycle ->
+      keepFresher(T, {BasePid, BaseCycle}, BaseIndex, CurIndex+1, Acc);
+    true ->
+      keepFresher(T, {BasePid, BaseCycle}, BaseIndex, CurIndex+1, [{BasePid, CurCycle}|Acc])
+  end;
+keepFresher([H|T], Peer, BaseIndex, CurIndex, Acc) ->
+  keepFresher(T, Peer, BaseIndex, CurIndex+1, [H|Acc]).
+
+
+filterFresh(View) ->
+  filterFresh(View, 0, View).
+filterFresh([], _, ResultView) ->
+  ResultView;
+filterFresh([H|T], Index, ResultView) ->
+  filterFresh(T, Index+1, keepFresher(ResultView, H, Index)).

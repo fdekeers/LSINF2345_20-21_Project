@@ -22,7 +22,7 @@ getNeigs(BootServerPid, NodeId) ->
 loop({NodeId, NodePid}, View, Cycle, {Selection, Propagation, H, S}) ->
   timer:sleep(3000),
   {PeerPid, _} = utils:selectPeer(View, Selection),
-  utils:propagateView(FromPid, PeerPid, Cycle, View, {Propagation, H}),
+  utils:propagateView(FromPid, PeerPid, Cycle, View, {Propagation, H, S),
   loop({NodeId, NodePid}, NewView, Cycle + 1, {Selection, Propagation, H, S}).
 
 
