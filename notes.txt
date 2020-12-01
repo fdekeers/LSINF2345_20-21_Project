@@ -1,5 +1,9 @@
 PEER-SAMPLING SERVICE
 
+General parameters
+  - Cycle: 3 seconds
+  - Maximum view size: 7 peers
+
 Each node maintains
   - Address to send/receive messages (NodePid)
   - View of the peers (list of neighbours) -> contains NodeIds of other nodes.
@@ -8,3 +12,10 @@ Each node maintains
 Active thread
   - Wait X second for the cycle (3 seconds)
   - Chooses a peer from the view to exchage view with
+
+
+Questions
+  - How to differentiate the active and passive threads ?
+    More precisely, how can the active and the passive thread share the view ?
+  - When exchanging its view with another node, should a node put a fresh age to
+    the sent peers, or should it keep the age that was in its view ?
