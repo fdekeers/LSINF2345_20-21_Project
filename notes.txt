@@ -19,3 +19,8 @@ Questions
     More precisely, how can the active and the passive thread share the view ?
   - When exchanging its view with another node, should a node put a fresh age to
     the sent peers, or should it keep the age that was in its view ?
+  - The Tree doesn't contain the node PIDs, is it a problem ?
+    Because, when we start the peer-sampling service, each node has its neighbours
+    in the tree as peers, so we need to send messages to them.
+  - In the article, it is asked to always send c/2 - 1 peers.
+    For the project, c = 7, so how many peers do we need to send ? 3 ?

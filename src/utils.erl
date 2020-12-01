@@ -1,5 +1,5 @@
 - module (utils).
-- export ([selectPeer/2, permute/2]).
+- export ([selectPeer/2, pushView/5]).
 
 % Updates the view of a node.
 %   NodeId: node to update the view
@@ -36,18 +36,24 @@ permute(View, H) ->
 % Takes N random peers from the view, by starting with the freshest peers.
 takeNRandomPeers(FreshestPeers, OldestPeers, N) ->
   takeNRandomPeers(FreshestPeers, OldestPeers, N, []).
+% Both lists are empty, return even if there are not enough peers.
 takeNRandomPeers([], [], _, Acc) ->
   {lists:reverse(Acc), [], []};
+% Enough peers have been taken, return
 takeNRandomPeers(FreshestPeers, OldestPeers, 0, Acc) ->
   {lists:reverse(Acc), FreshestPeers, OldestPeers};
+% List of fresh peers is empty, take from the H oldest peers.
 takeNRandomPeers([], OldestPeers, N, Acc) ->
   Peer = pickRandom(OldestPeers),
   NewOldestPeers = lists:delete(Peer, OldestPeers),
-  takeNRandomPeers([], NewOldestPeers, N-1, [Peer|Acc]);
+  {PeerPid, Cycle} = Peer,
+  takeNRandomPeers([], NewOldestPeers, N-1, [PeerPid|Acc]);
+% Take from the freshest peers.
 takeNRandomPeers(FreshestPeers, OldestPeers, N, Acc) ->
   Peer = pickRandom(FreshestPeers),
   NewFreshestPeers = lists:delete(Peer, FreshestPeers),
-  takeNRandomPeers(NewFreshestPeers, OldestPeers, N-1, [Peer|Acc]).
+  {PeerPid, Cycle} = Peer,
+  takeNRandomPeers(NewFreshestPeers, OldestPeers, N-1, [PeerPid|Acc]).
 
 
 % Gets a random element from a list.
@@ -91,8 +97,8 @@ propagateView(FromPid, PeerPid, Cycle, View, {pushpull, H}) ->
 
 pushView(FromPid, PeerPid, Cycle, View, H) ->
   PermutedView = permute(View, H),
-  %PeersToSend = pickPeersToSend(PermutedView, Cycle, 3),
-  PeerPid ! {push, {FromPid, Cycle}}.
+  PeersToSend = lists:sublist(PermutedView, 3),
+  PeerPid ! {push, {FromPid, Cycle, PeersToSend}}.
 
 pushPullView(FromPid, PeerPid, Cycle, View, H) ->
   PeerPid ! {pushpull, View, FromPid},
