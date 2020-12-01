@@ -1,5 +1,5 @@
--module(structure).
--export([loop/1, start/0]).
+-module(linkList).
+-export([loop/1, search/3]).
 -import(lists, [reverse/1]).
 
 loop(H) ->
@@ -14,10 +14,4 @@ loop(H) ->
 
 search([H|_], _, true) -> H;
 search([H|T], Node, false) -> search(T, Node, Node =:= H);
-search([], _, _) -> null.
-
-start() ->
-  Loop_pid = spawn(structure, loop, [[]]),
-  Loop_pid ! {add, 1},
-  Loop_pid ! {add, 2},
-  Loop_pid ! {getNeighbors, 2}.
+search([], _, _) -> nil.

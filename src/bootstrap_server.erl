@@ -1,17 +1,43 @@
 - module(bootstrap_server).
 - import(tree, [add/2, getNeigs/2]).
-- export([listen/2]).
+- import(linkList, [search/3]).
+- import(lists, [reverse/1]).
+- export([listenT/2, listenL/2, start/0]).
 
-listen(NodeId, Struct) ->
-  %io:format("Bootstrap server is listening...~n", []),
+start() ->
+  L_PID = spawn(bootstrap_server, listenL, [0, []]),
+  L_PID ! {join, self()},
+  L_PID ! {join, self()},
+  L_PID ! {getPeers, {self(), 0}},
+  T_PID = spawn(bootstrap_server, listenT, [0 , {}]),
+  T_PID ! {join, self()},
+  T_PID ! {join, self()},
+  T_PID ! {getPeers, {self(), 0}}.
+
+listenT(NodeId, Tree) ->
+  io:format("Bootstrap server is listening...~n", []),
   receive
     { join, From } ->
-      NewStruct = tree:add(NodeId, Struct),
-      %io:format("Latest tree: ~p~n", [ NewStruct ]),
+      NewTree = tree:add(NodeId, Tree),
+      io:format("Latest tree: ~p~n", [ NewTree ]),
       From ! { joinOk, NodeId },
-      listen(NodeId + 1, NewStruct);
+      listenT(NodeId + 1, NewTree);
     { getPeers, { From, ForNodeId } } ->
-      Neigs = tree:getNeigs(ForNodeId, Struct),
+      Neigs = tree:getNeigs(ForNodeId, Tree),
+      io: format("Neighbors are ~p~n", [Neigs]),
       From ! { getPeersOk, { Neigs }  },
-      listen(NodeId, Struct)
+      listenT(NodeId, Tree)
+  end.
+
+listenL(NodeId, H) ->
+  io:format("Bootstrap server is listening...~n", []),
+  receive
+    {join, From } ->
+        io: format("Latest list is ~p~n", [[NodeId]++H]),
+        listenL(NodeId + 1 , [NodeId]++H);
+    {getPeers, { From, ForNodeId } } ->
+        Neigs = [linkList:search(H, ForNodeId, false), linkList:search(reverse(H), ForNodeId, false)],
+        io: format("Neighbors are ~p~n", [Neigs]),
+        From ! {getPeersOk, { Neigs } },
+        listenL(NodeId, H)
   end.

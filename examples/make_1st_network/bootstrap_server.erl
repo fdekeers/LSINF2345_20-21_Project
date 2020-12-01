@@ -2,16 +2,16 @@
 - import(tree, [add/2, getNeigs/2]).
 - export([listen/2]).
 
-listen(NodeId, Tree) ->
-  io:format("Bootstrap server is listening...~n", []),
+listen(NodeId, Struct) ->
+  %io:format("Bootstrap server is listening...~n", []),
   receive
     { join, From } ->
-      NewTree = tree:add(NodeId, Tree),
-      io:format("Latest tree: ~p~n", [ NewTree ]),
+      NewStruct = tree:add(NodeId, Struct),
+      %io:format("Latest tree: ~p~n", [ NewStruct ]),
       From ! { joinOk, NodeId },
-      listen(NodeId + 1, NewTree);
+      listen(NodeId + 1, NewStruct);
     { getPeers, { From, ForNodeId } } ->
-      Neigs = tree:getNeigs(ForNodeId, Tree),
+      Neigs = tree:getNeigs(ForNodeId, Struct),
       From ! { getPeersOk, { Neigs }  },
-      listen(NodeId, Tree)
+      listen(NodeId, Struct)
   end.
