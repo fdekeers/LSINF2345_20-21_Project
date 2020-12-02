@@ -27,9 +27,9 @@ loop({NodeId, NodePid}, View, Cycle, {Selection, Propagation, H, S}) ->
 
 
 % Passive thread
-listen({NodeId, NodePid}, View, {Propagation, H, S}) ->
+listen({NodeId, NodePid}, View, Cycle, {Propagation, H, S}) ->
   receive
-    {FromPid, Cycle, ReceivedPeers} ->
-      utils:receivedView(NodePid, View, FromPid, Cycle, ReceivedPeers, {Propagation, H, S});
+    {FromPid, ReceivedView} ->
+      utils:receivedView(NodePid, View, FromPid, Cycle, ReceivedView, {Propagation, H, S});
     kill -> ok
   end.

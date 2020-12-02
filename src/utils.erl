@@ -54,14 +54,6 @@ takeNRandomPeers(FreshestPeers, OldestPeers, N, Acc) ->
   NewFreshestPeers = lists:delete(Peer, FreshestPeers),
   takeNRandomPeers(NewFreshestPeers, OldestPeers, N-1, [Peer|Acc]).
 
-% Adds the cycle to the list of peers.
-setCycle(Peers, Cycle) ->
-  setCycle(Peers, Cycle, []).
-setCycle([], _, Acc) ->
-  lists:reverse(Acc);
-setCycle([H|T], Cycle, Acc) ->
-  setCycle(T, Cycle, [{H, Cycle}|Acc]).
-
 
 %%% PEER SELECTION %%%
 
@@ -100,28 +92,26 @@ propagateView(FromPid, PeerPid, Cycle, View, {pushpull, H, S}) ->
 
 % Propagates the view by following the push strategy.
 pushView(FromPid, PeerPid, Cycle, View, H) ->
+  ThisPeer = {FromPid, Cycle},
   PermutedView = permute(View, H),
-  PeersToSend = lists:sublist(PermutedView, 3),
-  PeerPid ! {FromPid, Cycle, PeersToSend},
+  ViewToSend = [ThisPeer] ++ lists:sublist(PermutedView, 3),
+  PeerPid ! {FromPid, ViewToSend},
   View.
 
 % Propagates the view by following the pushpull strategy.
 pushPullView(FromPid, PeerPid, Cycle, View, {H, S}) ->
   pushView(FromPid, PeerPid, Cycle, View, H),
   receive
-    {PeerPid, PeerCycle, ReceivedPeers} ->
-      ReceivedView = setCycle(ReceivedPeers, PeerCycle),
+    {PeerPid, ReceivedView} ->
       selectView(View, ReceivedView, H, S)
   end.
 
 % Responds to the received message if the strategy is pushpull,
 % then updates the local view with the received view.
-receivedView(_, View, _, Cycle, ReceivedPeers, {push, H, S}) ->
-  ReceivedView = setCycle(ReceivedPeers, Cycle),
+receivedView(_, View, _, _, ReceivedView, {push, H, S}) ->
   selectView(View, ReceivedView, H, S);
-receivedView(NodePid, View, FromPid, Cycle, ReceivedPeers, {pushpull, H, S}) ->
+receivedView(NodePid, View, FromPid, Cycle, ReceivedView, {pushpull, H, S}) ->
   pushView(NodePid, FromPid, Cycle, View, H),
-  ReceivedView = setCycle(ReceivedPeers, Cycle),
   selectView(View, ReceivedView, H, S).
 
 
