@@ -22,7 +22,19 @@ Questions
   - The Tree doesn't contain the node PIDs, is it a problem ?
     Because, when we start the peer-sampling service, each node has its neighbours
     in the tree as peers, so we need to send messages to them.
+    -> The main process has a table of all the nodes in the system, with their
+       NodeIDs and PIDs.
   - In the article, it is asked to always send c/2 - 1 peers.
     For the project, c = 7, so how many peers do we need to send ? 3 ?
   - With the removal of the H oldest peers, and the S first ones, won't the size
     of the view drop below 7 ?
+
+
+Main process:
+  - Maintains a list of all the nodes in the network.
+  - Chooses the nodes that will crash
+
+Logs:
+  - Cycle, NodeID, View
+
+Timer: learnyousomeerlang.com/more-on-multiprocessing#state-your-state
