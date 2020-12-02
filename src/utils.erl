@@ -1,5 +1,5 @@
 - module (utils).
-- export ([selectPeer/2, propagateView/5, filterFresh/1]).
+- export ([selectPeer/2, propagateView/5, removeHOldest/2]).
 
 %%% UTILITARY FUNCTIONS %%%
 % Sorts the view by decreasing order of freshness.
@@ -87,7 +87,7 @@ pickOldestPeer([], {PeerId, Cycle}) ->
 
 
 %%% VIEW PROPAGATION %%%
-propagateView(FromPid, PeerPid, Cycle, View, {push, H, S}) ->
+propagateView(FromPid, PeerPid, Cycle, View, {push, H, _}) ->
   pushView(FromPid, PeerPid, Cycle, View, H);
 propagateView(FromPid, PeerPid, Cycle, View, {pushpull, H, S}) ->
   pushPullView(FromPid, PeerPid, Cycle, View, {H, S}).
@@ -108,7 +108,8 @@ pushPullView(FromPid, PeerPid, Cycle, View, {H, S}) ->
 
 %%% VIEW SELECTION %%%
 selectView(View, PeerView, H, S) ->
-  FullView = View ++ PeerView.
+  FullView = View ++ PeerView,
+  FullViewUnique = removeDuplicates(FullView).
 
 % Removes the elements of the view that have the same Pid, but that are older.
 keepFresher(View, Peer, Index) ->
@@ -132,10 +133,18 @@ keepFresher([{BasePid, CurCycle}|T], {BasePid, BaseCycle}, BaseIndex, CurIndex, 
 keepFresher([H|T], Peer, BaseIndex, CurIndex, Acc) ->
   keepFresher(T, Peer, BaseIndex, CurIndex+1, [H|Acc]).
 
-
-filterFresh(View) ->
-  filterFresh(View, 0, View).
-filterFresh([], _, ResultView) ->
+% Removes duplicates of the same Pid, by keeping the freshest one.
+removeDuplicates(View) ->
+  removeDuplicates(View, 0, View).
+removeDuplicates([], _, ResultView) ->
   ResultView;
-filterFresh([H|T], Index, ResultView) ->
-  filterFresh(T, Index+1, keepFresher(ResultView, H, Index)).
+removeDuplicates([H|T], Index, ResultView) ->
+  removeDuplicates(T, Index+1, keepFresher(ResultView, H, Index)).
+
+% Removes the H oldest peers from the view.
+removeHOldest(View, H) ->
+  2.
+
+% Removes the S first peers from the view.
+removeSFirst(View, S) ->
+  lists:nthtail(length(View)-S-1, View).
