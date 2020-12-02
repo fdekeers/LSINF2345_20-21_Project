@@ -95,7 +95,8 @@ propagateView(FromPid, PeerPid, Cycle, View, {pushpull, H, S}) ->
 pushView(FromPid, PeerPid, Cycle, View, H) ->
   PermutedView = permute(View, H),
   PeersToSend = lists:sublist(PermutedView, 3),
-  PeerPid ! {FromPid, Cycle, PeersToSend}.
+  PeerPid ! {FromPid, Cycle, PeersToSend},
+  View.
 
 pushPullView(FromPid, PeerPid, Cycle, View, {H, S}) ->
   pushView(FromPid, PeerPid, Cycle, View, H),
@@ -109,7 +110,11 @@ pushPullView(FromPid, PeerPid, Cycle, View, {H, S}) ->
 %%% VIEW SELECTION %%%
 selectView(View, PeerView, H, S) ->
   FullView = View ++ PeerView,
-  FullViewUnique = removeDuplicates(FullView).
+  FullViewUnique = removeDuplicates(FullView),
+  FullViewH = removeHOldest(FullViewUnique, H),
+  FullViewS = removeSFirst(FullViewH, S),
+  FinalView = randomReduceToN(FullViewS, 7),
+  FinalView.
 
 % Removes the elements of the view that have the same Pid, but that are older.
 keepFresher(View, Peer, Index) ->
