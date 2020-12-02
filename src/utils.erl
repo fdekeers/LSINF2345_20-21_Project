@@ -1,5 +1,5 @@
 - module (utils).
-- export ([selectPeer/2, propagateView/5, randomReduceToN/2]).
+- export ([selectPeer/2, propagateView/5, receivedView/6]).
 
 %%% UTILITARY FUNCTIONS %%%
 % Sorts the view by decreasing order of freshness.
@@ -87,29 +87,44 @@ pickOldestPeer([], {PeerId, Cycle}) ->
 
 
 %%% VIEW PROPAGATION %%%
+
+% Propagates a view, either following the push or the pushpull strategy.
 propagateView(FromPid, PeerPid, Cycle, View, {push, H, _}) ->
   pushView(FromPid, PeerPid, Cycle, View, H);
 propagateView(FromPid, PeerPid, Cycle, View, {pushpull, H, S}) ->
   pushPullView(FromPid, PeerPid, Cycle, View, {H, S}).
 
+% Propagates the view by following the push strategy.
 pushView(FromPid, PeerPid, Cycle, View, H) ->
   PermutedView = permute(View, H),
   PeersToSend = lists:sublist(PermutedView, 3),
   PeerPid ! {FromPid, Cycle, PeersToSend},
   View.
 
+% Propagates the view by following the pushpull strategy.
 pushPullView(FromPid, PeerPid, Cycle, View, {H, S}) ->
   pushView(FromPid, PeerPid, Cycle, View, H),
   receive
-    {PeerPid, PeerCycle, PeersSent} ->
-      PeerView = setCycle(PeersSent, PeerCycle),
-      selectView(View, PeerView, H, S)
+    {PeerPid, PeerCycle, ReceivedPeers} ->
+      ReceivedView = setCycle(ReceivedPeers, PeerCycle),
+      selectView(View, ReceivedView, H, S)
   end.
 
+% Responds to the received message if the strategy is pushpull,
+% then updates the local view with the received view.
+receivedView(_, View, _, Cycle, ReceivedPeers, {push, H, S}) ->
+  ReceivedView = setCycle(ReceivedPeers, Cycle),
+  selectView(View, ReceivedView, H, S);
+receivedView(NodePid, View, FromPid, Cycle, ReceivedPeers, {pushpull, H, S}) ->
+  pushView(NodePid, FromPid, Cycle, View, H),
+  ReceivedView = setCycle(ReceivedPeers, Cycle),
+  selectView(View, ReceivedView, H, S).
 
 %%% VIEW SELECTION %%%
-selectView(View, PeerView, H, S) ->
-  FullView = View ++ PeerView,
+
+% Updates the current view, based on the received view and the H and S parameters.
+selectView(View, ReceivedView, H, S) ->
+  FullView = View ++ ReceivedView,
   FullViewUnique = removeDuplicates(FullView),
   FullViewH = removeHOldest(FullViewUnique, H),
   FullViewS = removeSFirst(FullViewH, S),

@@ -22,17 +22,14 @@ getNeigs(BootServerPid, NodeId) ->
 loop({NodeId, NodePid}, View, Cycle, {Selection, Propagation, H, S}) ->
   timer:sleep(3000),
   {PeerPid, _} = utils:selectPeer(View, Selection),
-  NewView = utils:propagateView(FromPid, PeerPid, Cycle, View, {Propagation, H, S),
+  NewView = utils:propagateView(NodePid, PeerPid, Cycle, View, {Propagation, H, S),
   loop({NodeId, NodePid}, NewView, Cycle + 1, {Selection, Propagation, H, S}).
 
 
 % Passive thread
-listen() ->
+listen({NodeId, NodePid}, View, {Propagation, H, S}) ->
   receive
-    {push, View, FromPid} ->
-
-    {pushpull, View, FromPid} ->
-
-
+    {FromPid, Cycle, ReceivedPeers} ->
+      utils:receivedView(NodePid, View, FromPid, Cycle, ReceivedPeers, {Propagation, H, S});
     kill -> ok
   end.
