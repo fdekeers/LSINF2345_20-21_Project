@@ -16,7 +16,7 @@ getNeigs(BootServerPid, NodeId) ->
   end.
 
 
-%%% PEER SAMPLING %%%
+%%% PEER SAMPLING SERVICE %%%
 
 % Active thread
 loop({NodeId, NodePid}, View, Cycle, {Selection, Propagation, H, S}) ->

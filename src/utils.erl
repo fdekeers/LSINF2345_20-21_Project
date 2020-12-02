@@ -2,10 +2,8 @@
 - export ([selectPeer/2,
            propagateView/5,
            receivedView/6,
-           removeDuplicates/1,
-           removeNOldest/2,
-           removeNFirst/2,
-           randomReduceToN/2]).
+           selectView/5]).
+
 
 %%% UTILITARY FUNCTIONS %%%
 % Sorts the view by decreasing order of freshness.
@@ -103,23 +101,25 @@ pushPullView(FromPid, PeerPid, Cycle, View, {H, S}) ->
   pushView(FromPid, PeerPid, Cycle, View, H),
   receive
     {PeerPid, ReceivedView} ->
-      selectView(View, ReceivedView, H, S)
+      selectView(FromPid, View, ReceivedView, H, S)
   end.
 
 % Responds to the received message if the strategy is pushpull,
 % then updates the local view with the received view.
-receivedView(_, View, _, _, ReceivedView, {push, H, S}) ->
-  selectView(View, ReceivedView, H, S);
+receivedView(NodePid, View, _, _, ReceivedView, {push, H, S}) ->
+  selectView(NodePid, View, ReceivedView, H, S);
 receivedView(NodePid, View, FromPid, Cycle, ReceivedView, {pushpull, H, S}) ->
   pushView(NodePid, FromPid, Cycle, View, H),
-  selectView(View, ReceivedView, H, S).
+  selectView(NodePid, View, ReceivedView, H, S).
 
 
 %%% VIEW SELECTION %%%
 
 % Updates the current view, based on the received view and the H and S parameters.
-selectView(View, ReceivedView, H, S) ->
-  FullView = View ++ ReceivedView,
+selectView(Pid, View, ReceivedView, H, S) ->
+  FunRemovePid = fun({ElemPid, _}) -> ElemPid =/= Pid end,
+  ReceivedViewWithoutPid = lists:filter(FunRemovePid, ReceivedView),
+  FullView = View ++ ReceivedViewWithoutPid,
   FullViewUnique = removeDuplicates(FullView),
   % Remove the H oldest peers, or until the view size is 7
   FullViewH = removeNOldest(FullViewUnique, max(0, min(H, length(FullViewUnique)-7))),
