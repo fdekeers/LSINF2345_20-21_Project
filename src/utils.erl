@@ -115,15 +115,13 @@ keepFresher(View, Peer, Index) ->
   keepFresher(View, Peer, Index, 0, []).
 keepFresher([], _, _, _, Acc) ->
   lists:reverse(Acc);
-keepFresher([H|T], Peer, BaseIndex, BaseIndex, Acc) ->
-  keepFresher(T, Peer, BaseIndex, BaseIndex+1, [H|Acc]);
 keepFresher([{BasePid, BaseCycle}|T], {BasePid, BaseCycle}, BaseIndex, CurIndex, Acc) ->
   if
     CurIndex > BaseIndex ->
       keepFresher(T, {BasePid, BaseCycle}, BaseIndex, CurIndex+1, Acc);
     true ->
       keepFresher(T, {BasePid, BaseCycle}, BaseIndex, CurIndex+1, [{BasePid, BaseCycle}|Acc])
-  end
+  end;
 keepFresher([{BasePid, CurCycle}|T], {BasePid, BaseCycle}, BaseIndex, CurIndex, Acc) ->
   if
     CurCycle < BaseCycle ->
