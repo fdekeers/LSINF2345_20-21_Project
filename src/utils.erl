@@ -141,9 +141,24 @@ removeDuplicates([], _, ResultView) ->
 removeDuplicates([H|T], Index, ResultView) ->
   removeDuplicates(T, Index+1, keepFresher(ResultView, H, Index)).
 
+% Removes the oldest Peer from the view.
+removeOldest(View) ->
+  removeOldest(View, View, {0, infinity}).
+removeOldest(BaseView, [], Oldest) ->
+  lists:delete(Oldest, BaseView);
+removeOldest(BaseView, [{Pid, Cycle}|T], {OldestPid, OldestCycle}) ->
+  if
+    Cycle =< OldestCycle ->
+      removeOldest(BaseView, T, {Pid, Cycle});
+    true ->
+      removeOldest(BaseView, T, {OldestPid, OldestCycle})
+  end.
+
 % Removes the H oldest peers from the view.
+removeHOldest(View, 0) ->
+  View;
 removeHOldest(View, H) ->
-  2.
+  removeHOldest(removeOldest(View), H-1).
 
 % Removes the S first peers from the view.
 removeSFirst(View, S) ->
