@@ -1,5 +1,5 @@
 - module (utils).
-- export ([selectPeer/2, propagateView/5, removeHOldest/2]).
+- export ([selectPeer/2, propagateView/5, randomReduceToN/2]).
 
 %%% UTILITARY FUNCTIONS %%%
 % Sorts the view by decreasing order of freshness.
@@ -163,3 +163,15 @@ removeHOldest(View, H) ->
 % Removes the S first peers from the view.
 removeSFirst(View, S) ->
   lists:nthtail(length(View)-S-1, View).
+
+% Removes random elements from the view, until the size of the view is N.
+randomReduceToN(View, N) ->
+  randomReduceToN(View, N, length(View)).
+randomReduceToN(View, N, Length) ->
+  if
+    Length =< N ->
+      View;
+    true ->
+      Random = pickRandom(View),
+      randomReduceToN(lists:delete(Random, View), N, Length-1)
+  end.
