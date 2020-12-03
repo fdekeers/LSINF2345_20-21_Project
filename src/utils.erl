@@ -1,7 +1,7 @@
 - module (utils).
 - export ([selectPeer/2,
-           propagateView/5,
-           receivedView/6,
+           selectBuffer/4,
+           receivedBuffer/6,
            selectView/5]).
 
 
@@ -69,57 +69,43 @@ selectPeer(Peers, tail) ->
 % The oldest peer is the one with the smallest Cycle.
 pickOldestPeer(Peers) ->
   pickOldestPeer(Peers, {0, infinity}).
-pickOldestPeer([{HId, HCycle}|T], {PeerId, Cycle}) ->
+pickOldestPeer([], Peer) ->
+  Peer;
+pickOldestPeer([{HId, HCycle}|T], {PeerId, PeerCycle}) ->
   if
-    HCycle =< Cycle ->
+    HCycle =< PeerCycle ->
       pickOldestPeer(T, {HId, HCycle});
     true ->
-      pickOldestPeer(T, {PeerId, Cycle})
-  end;
-pickOldestPeer([], Peer) ->
-  Peer.
+      pickOldestPeer(T, {PeerId, PeerCycle})
+  end.
 
 
 %%% VIEW PROPAGATION %%%
 
-% Propagates a view, either following the push or the pushpull strategy.
-propagateView(FromPid, PeerPid, Cycle, View, {push, H, _}) ->
-  pushView(FromPid, PeerPid, Cycle, View, H);
-propagateView(FromPid, PeerPid, Cycle, View, {pushpull, H, S}) ->
-  pushPullView(FromPid, PeerPid, Cycle, View, {H, S}).
-
-% Propagates the view by following the push strategy.
-pushView(FromPid, PeerPid, Cycle, View, H) ->
+% Selects the buffer to send.
+selectBuffer(FromPid, Cycle, View, H) ->
   ThisPeer = {FromPid, Cycle},
   PermutedView = permute(View, H),
-  ViewToSend = [ThisPeer] ++ lists:sublist(PermutedView, 3),
-  PeerPid ! {FromPid, ViewToSend},
-  View.
+  [ThisPeer] ++ lists:sublist(PermutedView, 3).
 
-% Propagates the view by following the pushpull strategy.
-pushPullView(FromPid, PeerPid, Cycle, View, {H, S}) ->
-  pushView(FromPid, PeerPid, Cycle, View, H),
-  receive
-    {PeerPid, ReceivedView} ->
-      selectView(FromPid, View, ReceivedView, H, S)
-  end.
-
-% Responds to the received message if the strategy is pushpull,
-% then updates the local view with the received view.
-receivedView(NodePid, View, _, _, ReceivedView, {push, H, S}) ->
-  selectView(NodePid, View, ReceivedView, H, S);
-receivedView(NodePid, View, FromPid, Cycle, ReceivedView, {pushpull, H, S}) ->
-  pushView(NodePid, FromPid, Cycle, View, H),
-  selectView(NodePid, View, ReceivedView, H, S).
+% Received a buffer from a peer.
+% If propagate strategy is push, returns the updated view.
+% If pushpull, first send local buffer, then returns the updated view.
+receivedBuffer(NodePid, _, _, View, ReceivedBuffer, {push, H, S}) ->
+  selectView(NodePid, View, ReceivedBuffer, H, S);
+receivedBuffer(NodePid, FromPid, Cycle, View, ReceivedBuffer, {pushpull, H, S}) ->
+  Buffer = selectBuffer(NodePid, Cycle, View, H),
+  FromPid ! {response, Buffer},
+  selectView(NodePid, View, ReceivedBuffer, H, S).
 
 
 %%% VIEW SELECTION %%%
 
 % Updates the current view, based on the received view and the H and S parameters.
-selectView(Pid, View, ReceivedView, H, S) ->
+selectView(Pid, View, ReceivedBuffer, H, S) ->
   FunRemovePid = fun({ElemPid, _}) -> ElemPid =/= Pid end,
-  ReceivedViewWithoutPid = lists:filter(FunRemovePid, ReceivedView),
-  FullView = View ++ ReceivedViewWithoutPid,
+  ReceivedBufferWithoutPid = lists:filter(FunRemovePid, ReceivedBuffer),
+  FullView = View ++ ReceivedBufferWithoutPid,
   FullViewUnique = removeDuplicates(FullView),
   % Remove the H oldest peers, or until the view size is 7
   FullViewH = removeNOldest(FullViewUnique, max(0, min(H, length(FullViewUnique)-7))),

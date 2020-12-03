@@ -10,7 +10,6 @@ Each node maintains
   - Current value of cycle.
 
 Active thread
-  - Wait X second for the cycle (3 seconds)
   - Chooses a peer from the view to exchage view with
 
 
