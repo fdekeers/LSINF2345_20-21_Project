@@ -48,7 +48,6 @@ scenario(Nodes, 1) ->
 scenario(AllNodes, [], 1) ->
   % First cycle, bootstrapping phase
   ActiveNodes = bootstrappingPhase(AllNodes),
-  io:format("Active Nodes: ~p~n", [ActiveNodes]),
   scenario(AllNodes, ActiveNodes, 2);
 scenario(_, _, 181) ->
   % End of the scenario

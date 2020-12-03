@@ -28,14 +28,18 @@ listen(NodeId, View, {Selection, Propagation, H, S}) ->
       % Active section, selects the peer to contact, the subset of the
       % view to send, and send it.
       {PeerPid, _} = utils:selectPeer(View, Selection),
-      Buffer = utils:selectBuffer(self(), Cycle, View, H),
+      {PermutedView, Buffer} = utils:selectBuffer(self(), Cycle, View, H),
       PeerPid ! {push, self(), Cycle, Buffer},
-      listen(NodeId, View, {Selection, Propagation, H, S});
+      listen(NodeId, PermutedView, {Selection, Propagation, H, S});
 
     {push, FromPid, Cycle, ReceivedBuffer} ->
+      io:format("Node ~p received push from node ~p~n", [self(), FromPid]),
+      io:format("Node ~p local view:    ~p~n", [self(), View]),
+      io:format("Node ~p received view: ~p~n", [self(), ReceivedBuffer]),
       % Passive section, updates local view with received view.
       % If strategy is pushpull, first respond to sender with local buffer.
       NewView = utils:receivedBuffer(self(), FromPid, Cycle, View, ReceivedBuffer, {Propagation, H, S}),
+      io:format("Node ~p updated view:  ~p~n", [self(), NewView]),
       listen(NodeId, NewView, {Selection, Propagation, H, S});
 
     {response, ReceivedBuffer} ->

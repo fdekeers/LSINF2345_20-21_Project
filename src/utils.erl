@@ -113,10 +113,11 @@ pickOldestPeer([{HId, HCycle}|T], {PeerId, PeerCycle}) ->
 %%% VIEW PROPAGATION %%%
 
 % Selects the buffer to send.
+% Returns the permuted view, and the buffer to send.
 selectBuffer(FromPid, Cycle, View, H) ->
   ThisPeer = {FromPid, Cycle},
   PermutedView = permute(View, H),
-  [ThisPeer] ++ lists:sublist(PermutedView, 3).
+  {PermutedView, [ThisPeer] ++ lists:sublist(PermutedView, 3)}
 
 % Received a buffer from a peer.
 % If propagate strategy is push, returns the updated view.
@@ -124,9 +125,9 @@ selectBuffer(FromPid, Cycle, View, H) ->
 receivedBuffer(NodePid, _, _, View, ReceivedBuffer, {push, H, S}) ->
   selectView(NodePid, View, ReceivedBuffer, H, S);
 receivedBuffer(NodePid, FromPid, Cycle, View, ReceivedBuffer, {pushpull, H, S}) ->
-  Buffer = selectBuffer(NodePid, Cycle, View, H),
+  {PermutedView, Buffer} = selectBuffer(NodePid, Cycle, View, H),
   FromPid ! {response, Buffer},
-  selectView(NodePid, View, ReceivedBuffer, H, S).
+  selectView(NodePid, PermutedView, ReceivedBuffer, H, S).
 
 
 %%% VIEW SELECTION %%%
