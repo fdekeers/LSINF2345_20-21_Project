@@ -36,38 +36,37 @@ launch(tree, N, Params) ->
   initializeViews(BootServerPid, Nodes),
 
   % Experimental scenario
-  scenario(Nodes, 1).
+  scenario(Nodes).
   %growingPhase(),
   %crashingPhase(),
   %recoveryPhase(),
   %stop().
 
 % Applies the experimental scenario, as described in the project statement.
-scenario(Nodes, 1) ->
-  scenario(Nodes, [], 1).
-scenario(AllNodes, [], 1) ->
+scenario(Nodes) ->
+  scenario(Nodes, [], Nodes, 1).
+scenario(AllNodes, [], AllNodes, 1) ->
   % First cycle, bootstrapping phase
-  ActiveNodes = bootstrappingPhase(AllNodes),
-  scenario(AllNodes, ActiveNodes, 2);
-scenario(_, _, 181) ->
+  N = round(0.4 * length(AllNodes)),
+  {ActiveNodes, InactiveNodes} = startNodes(N, [], AllNodes),
+  io:format("Active nodes: ~p~n", [ActiveNodes]),
+  io:format("Inactive nodes: ~p~n", [InactiveNodes]),
+  scenario(AllNodes, ActiveNodes, InactiveNodes,  2);
+scenario(_, _, _, 181) ->
   % End of the scenario
   stop;
-scenario(AllNodes, ActiveNodes, Cycle) ->
+scenario(AllNodes, ActiveNodes, InactiveNodes, Cycle) ->
   % Nothing special to do
   %timer:sleep(3000),
-  scenario(AllNodes, ActiveNodes, Cycle+1).
+  scenario(AllNodes, ActiveNodes, InactiveNodes, Cycle+1).
 
-% Launches the bootstrapping phase:
-% Start 40% of the nodes.
-bootstrappingPhase(Nodes) ->
-  % Number of nodes that are launched during the bootstrapping phase (40%)
-  N = round(0.4 * length(Nodes)),
-  bootstrappingPhase(Nodes, N, []).
-bootstrappingPhase(_, 0, ActiveNodes) ->
-  ActiveNodes;
-bootstrappingPhase(Nodes, N, ActiveNodes) ->
-  {NodeId, NodePid} = utils:pickRandom(Nodes),
-  NewNodes = lists:delete({NodeId, NodePid}, Nodes),
+% Starts N nodes, and updates the active and inactive nodes lists.
+startNodes(0, ActiveNodes, InactiveNodes) ->
+  {ActiveNodes, InactiveNodes};
+startNodes(N, ActiveNodes, InactiveNodes) ->
+  {NodeId, NodePid} = utils:pickRandom(InactiveNodes),
+  NewInactiveNodes = lists:delete({NodeId, NodePid}, InactiveNodes),
   NodePid ! {start},
   NodePid ! {active, 1},
-  bootstrappingPhase(NewNodes, N-1, [{NodeId, NodePid}|ActiveNodes]).
+  NewActiveNodes = [{NodeId, NodePid}|ActiveNodes],
+  startNodes(N-1, NewActiveNodes, NewInactiveNodes).
