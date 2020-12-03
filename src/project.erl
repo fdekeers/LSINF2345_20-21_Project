@@ -44,15 +44,15 @@ launch(tree, N, Params) ->
 
 % Applies the experimental scenario, as described in the project statement.
 scenario(Nodes) ->
-  scenario(Nodes, [], Nodes, 1).
-scenario(AllNodes, [], AllNodes, 1) ->
+  scenario(Nodes, [], Nodes, 0).
+scenario(AllNodes, [], AllNodes, 0) ->
   % First cycle, bootstrapping phase
   N = round(0.4 * length(AllNodes)),
-  {ActiveNodes, InactiveNodes} = startNodes(N, [], AllNodes),
+  {ActiveNodes, InactiveNodes} = startNodes(N, 0, [], AllNodes),
   io:format("Active nodes: ~p~n", [ActiveNodes]),
   io:format("Inactive nodes: ~p~n", [InactiveNodes]),
-  scenario(AllNodes, ActiveNodes, InactiveNodes,  2);
-scenario(_, _, _, 181) ->
+  scenario(AllNodes, ActiveNodes, InactiveNodes, 1);
+scenario(_, _, _, 180) ->
   % End of the scenario
   stop;
 scenario(AllNodes, ActiveNodes, InactiveNodes, Cycle) ->
@@ -61,12 +61,12 @@ scenario(AllNodes, ActiveNodes, InactiveNodes, Cycle) ->
   scenario(AllNodes, ActiveNodes, InactiveNodes, Cycle+1).
 
 % Starts N nodes, and updates the active and inactive nodes lists.
-startNodes(0, ActiveNodes, InactiveNodes) ->
+startNodes(0, _, ActiveNodes, InactiveNodes) ->
   {ActiveNodes, InactiveNodes};
-startNodes(N, ActiveNodes, InactiveNodes) ->
+startNodes(N, Cycle, ActiveNodes, InactiveNodes) ->
   {NodeId, NodePid} = utils:pickRandom(InactiveNodes),
   NewInactiveNodes = lists:delete({NodeId, NodePid}, InactiveNodes),
   NodePid ! {start},
-  NodePid ! {active, 1},
+  NodePid ! {active, Cycle},
   NewActiveNodes = [{NodeId, NodePid}|ActiveNodes],
-  startNodes(N-1, NewActiveNodes, NewInactiveNodes).
+  startNodes(N-1, Cycle, NewActiveNodes, NewInactiveNodes).
