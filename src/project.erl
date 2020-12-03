@@ -44,21 +44,21 @@ launch(tree, N, Params) ->
 
 % Applies the experimental scenario, as described in the project statement.
 scenario(Nodes) ->
-  scenario(Nodes, [], Nodes, 0).
+  scenario([], Nodes, 0).
 
-scenario(AllNodes, [], AllNodes, 0) ->
+scenario([], AllNodes, 0) ->
   % First cycle, bootstrapping phase
   N = round(math:ceil(0.4 * length(AllNodes))),
-  {ActiveNodes, InactiveNodes} = startNodes(N, 0, [], AllNodes),
+  {ActiveNodes, InactiveNodes} = startNodes(N, [], AllNodes),
   io:format("Cycle ~p, ~p active nodes~n", [0, length(ActiveNodes)]),
   activateNodes(ActiveNodes, 0),
-  scenario(AllNodes, ActiveNodes, InactiveNodes, 1);
+  scenario(ActiveNodes, InactiveNodes, 1);
 
-scenario(AllNodes, ActiveNodes, InactiveNodes, 120) ->
+scenario(ActiveNodes, InactiveNodes, 120) ->
   % 120th cycle
   % As 120 is divisible by 30, start 20% of the inactive nodes
   N1 = round(math:ceil(0.2 * length(InactiveNodes))),
-  {NewActiveNodes, NewInactiveNodes} = startNodes(N1, 120, ActiveNodes, InactiveNodes),
+  {NewActiveNodes, NewInactiveNodes} = startNodes(N1, ActiveNodes, InactiveNodes),
 
   % Crash a random number of active nodes, between 50 and 70% of the active nodes
   Ratio = (rand:uniform(21) + 49) / 100,
@@ -68,43 +68,53 @@ scenario(AllNodes, ActiveNodes, InactiveNodes, 120) ->
   % Activate active nodes
   io:format("Cycle ~p, ~p active nodes~n", [120, length(NewActiveNodes2)]),
   activateNodes(NewActiveNodes2, 120),
-  scenario(AllNodes, NewActiveNodes2, NewInactiveNodes2, 121);
+  scenario(NewActiveNodes2, NewInactiveNodes2, 121);
 
-scenario(_, ActiveNodes, _, 180) ->
+scenario(ActiveNodes, InactiveNodes, 150) ->
+  % 150th cycle, recovery phase
+  N = round(math:ceil(0.6 * length(InactiveNodes))),
+  {NodeId, NodePid} = utils:pickRandom(ActiveNodes),
+  InitView = [{NodeId, NodePid, 150}],
+  {NewActiveNodes, NewInactiveNodes} = restartNodes(N, ActiveNodes, InactiveNodes, InitView),
+  io:format("Cycle ~p, ~p active nodes~n", [150, length(NewActiveNodes)]),
+  activateNodes(NewActiveNodes, 150),
+  scenario(NewActiveNodes, NewInactiveNodes, 151);
+
+scenario(ActiveNodes, _, 180) ->
   % End of the scenario
   io:format("Cycle ~p, ~p active nodes~n", [180, length(ActiveNodes)]),
   stop;
 
-scenario(AllNodes, ActiveNodes, InactiveNodes, Cycle) ->
+scenario(ActiveNodes, InactiveNodes, Cycle) ->
   % General case
   DivisibleBy30 = Cycle rem 30 =:= 0,
   if
     DivisibleBy30 ->
       % Growing phase, start 20% of the inactive nodes
       N = round(math:ceil(0.2 * length(InactiveNodes))),
-      {NewActiveNodes, NewInactiveNodes} = startNodes(N, Cycle, ActiveNodes, InactiveNodes),
+      {NewActiveNodes, NewInactiveNodes} = startNodes(N, ActiveNodes, InactiveNodes),
       % Activate active nodes
       io:format("Cycle ~p, ~p active nodes~n", [Cycle, length(NewActiveNodes)]),
       activateNodes(NewActiveNodes, Cycle),
-      scenario(AllNodes, NewActiveNodes, NewInactiveNodes, Cycle+1);
+      scenario(NewActiveNodes, NewInactiveNodes, Cycle+1);
     true ->
       % Nothing special to do, only activate active nodes
       io:format("Cycle ~p, ~p active nodes~n", [Cycle, length(ActiveNodes)]),
       activateNodes(ActiveNodes, Cycle),
-      scenario(AllNodes, ActiveNodes, InactiveNodes, Cycle+1)
+      scenario(ActiveNodes, InactiveNodes, Cycle+1)
   end.
   %timer:sleep(3000),
 
 
-% Starts N nodes, and updates the active and inactive nodes lists.
-startNodes(0, _, ActiveNodes, InactiveNodes) ->
+% Starts N nodes with the initial view, and updates the active and inactive nodes lists.
+startNodes(0, ActiveNodes, InactiveNodes) ->
   {ActiveNodes, InactiveNodes};
-startNodes(N, Cycle, ActiveNodes, InactiveNodes) ->
+startNodes(N, ActiveNodes, InactiveNodes) ->
   {NodeId, NodePid} = utils:pickRandom(InactiveNodes),
   NewInactiveNodes = lists:delete({NodeId, NodePid}, InactiveNodes),
   NodePid ! {start},
   NewActiveNodes = [{NodeId, NodePid}|ActiveNodes],
-  startNodes(N-1, Cycle, NewActiveNodes, NewInactiveNodes).
+  startNodes(N-1, NewActiveNodes, NewInactiveNodes).
 
 % Activate all the active nodes, i.e. start the active thread of each node
 % This function is called at every cycle.
@@ -121,3 +131,14 @@ crashNodes(N, ActiveNodes, InactiveNodes) ->
   NodePid ! {kill},
   NewInactiveNodes = [{NodeId, NodePid}|InactiveNodes],
   crashNodes(N-1, NewActiveNodes, NewInactiveNodes).
+
+% Restarts N nodes, with the same initial view.
+restartNodes(0, ActiveNodes, InactiveNodes, _) ->
+  {ActiveNodes, InactiveNodes};
+restartNodes(N, ActiveNodes, InactiveNodes, InitView) ->
+  {NodeId, NodePid} = utils:pickRandom(InactiveNodes),
+  NewInactiveNodes = lists:delete({NodeId, NodePid}, InactiveNodes),
+  NodePid ! {init, InitView},
+  NodePid ! {start},
+  NewActiveNodes = [{NodeId, NodePid}|ActiveNodes],
+  restartNodes(N-1, NewActiveNodes, NewInactiveNodes, InitView).
