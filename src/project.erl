@@ -1,6 +1,6 @@
 - module(project).
 - import(bootstrap_server, [listen/2]).
-- import(node, [join/2, getNeigs/3, listen/3]).
+- import(node, [join/2, getNeigs/3, listen/4]).
 - export([launch/3]).
 
 % Creates the initial network, and return a list of all the nodes with their Pid.
@@ -11,7 +11,7 @@ makeNet(0, _, _, Nodes) ->
   lists:reverse(Nodes);
 makeNet(N, BootServerPid, Params, Nodes) ->
   NodeId = node:join(BootServerPid),
-  NodePid = spawn(node, listen, [NodeId, [], Params]),
+  NodePid = spawn(node, listen, [NodeId, down, [], Params]),
   Node = {NodeId, NodePid},
   makeNet(N-1, BootServerPid, Params, [Node|Nodes]).
 
@@ -68,5 +68,6 @@ bootstrappingPhase(_, 0, ActiveNodes) ->
 bootstrappingPhase(Nodes, N, ActiveNodes) ->
   {NodeId, NodePid} = utils:pickRandom(Nodes),
   NewNodes = lists:delete({NodeId, NodePid}, Nodes),
+  NodePid ! {start},
   NodePid ! {active, 1},
   bootstrappingPhase(NewNodes, N-1, [{NodeId, NodePid}|ActiveNodes]).

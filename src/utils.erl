@@ -37,16 +37,6 @@ pickRandom(List) ->
   Rand = rand:uniform(length(List)),
   lists:nth(Rand, List).
 
-% Returns a random subset of a list, of a specified size.
-randomSubset(List, Size) ->
-  randomSubset(List, Size, []).
-randomSubset(_, 0, Acc) ->
-  lists:reverse(Acc);
-randomSubset(List, Size, Acc) ->
-  Elem = pickRandom(List),
-  NewList = lists:delete(Elem, List),
-  randomSubset(NewList, Size-1, [Elem|Acc]).
-
 % Permute: put the H oldest elements at the end,
 % and the elements that will be sent at the beginning.
 %   - Sort the list based on freshness
@@ -117,7 +107,7 @@ pickOldestPeer([{HId, HCycle}|T], {PeerId, PeerCycle}) ->
 selectBuffer(FromPid, Cycle, View, H) ->
   ThisPeer = {FromPid, Cycle},
   PermutedView = permute(View, H),
-  {PermutedView, [ThisPeer] ++ lists:sublist(PermutedView, 3)}
+  {PermutedView, [ThisPeer] ++ lists:sublist(PermutedView, 3)}.
 
 % Received a buffer from a peer.
 % If propagate strategy is push, returns the updated view.
