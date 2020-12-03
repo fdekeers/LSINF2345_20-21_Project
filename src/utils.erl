@@ -1,11 +1,31 @@
 - module (utils).
-- export ([selectPeer/2,
+- export ([buildInitView/2,
+           pickRandom/1,
+           permute/2,
+           selectPeer/2,
            selectBuffer/4,
            receivedBuffer/6,
            selectView/5]).
 
 
 %%% UTILITARY FUNCTIONS %%%
+
+% Returns the initial view of a node, that contains its initial neighbors
+% in the data structure (tree or linked-list).
+% The cycle of all the neighbors in the initial view is 0.
+buildInitView(Nodes, Neighbors) ->
+  buildInitView(Nodes, Neighbors, []).
+buildInitView([], _, Acc) ->
+  lists:reverse(Acc);
+buildInitView([{NodeId, NodePid}|T], Neighbors, Acc) ->
+  IsMember = lists:member(NodeId, Neighbors),
+  if
+    IsMember ->
+      buildInitView(T, Neighbors, [{NodePid, 0}|Acc]);
+    true ->
+      buildInitView(T, Neighbors, Acc)
+  end.
+
 % Sorts the view by decreasing order of freshness.
 sort(View) ->
   % Anonymous sorting function, based on the freshness.
@@ -17,6 +37,16 @@ pickRandom(List) ->
   Rand = rand:uniform(length(List)),
   lists:nth(Rand, List).
 
+% Returns a random subset of a list, of a specified size.
+randomSubset(List, Size) ->
+  randomSubset(List, Size, []).
+randomSubset(_, 0, Acc) ->
+  lists:reverse(Acc);
+randomSubset(List, Size, Acc) ->
+  Elem = pickRandom(List),
+  NewList = lists:delete(Elem, List),
+  randomSubset(NewList, Size-1, [Elem|Acc]).
+
 % Permute: put the H oldest elements at the end,
 % and the elements that will be sent at the beginning.
 %   - Sort the list based on freshness
@@ -26,7 +56,7 @@ pickRandom(List) ->
 %   - Build the resulting list: Taken elements + remaining elements + old elements
 permute(View, H) ->
   SortedView = sort(View),
-  IndexH = length(SortedView) - H,
+  IndexH = max(0, length(SortedView) - H),
   OldestPeers = lists:nthtail(IndexH, SortedView),
   FreshestPeers = lists:sublist(SortedView, IndexH),
   {Taken, FRemaining, ORemaining} = takeNRandomPeers(FreshestPeers, OldestPeers, 3),

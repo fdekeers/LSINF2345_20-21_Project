@@ -32,11 +32,11 @@ listenT(NodeId, Tree) ->
 listenL(NodeId, H) ->
   %io:format("Bootstrap server is listening...~n", []),
   receive
-    {join, From } ->
+    { join, From } ->
         %io: format("Latest list is ~p~n", [[NodeId]++H]),
         From ! { joinOk, NodeId },
         listenL(NodeId + 1 , [NodeId]++H);
-    {getPeers, { From, ForNodeId } } ->
+    { getPeers, { From, ForNodeId } } ->
         Neigs = [linkList:search(H, ForNodeId, false), linkList:search(reverse(H), ForNodeId, false)],
         %io: format("Neighbors are ~p~n", [Neigs]),
         From ! {getPeersOk, { Neigs } },
