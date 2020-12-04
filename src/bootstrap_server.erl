@@ -15,29 +15,30 @@ start() ->
   T_PID ! {getPeers, {self(), 0}}.
 
 listenT(NodeId, Tree) ->
-  io:format("Bootstrap server is listening...~n", []),
+  %io:format("Bootstrap server is listening...~n", []),
   receive
     { join, From } ->
       NewTree = tree:add(NodeId, Tree),
-      io:format("Latest tree: ~p~n", [ NewTree ]),
+      %io:format("Latest tree: ~p~n", [ NewTree ]),
       From ! { joinOk, NodeId },
       listenT(NodeId + 1, NewTree);
     { getPeers, { From, ForNodeId } } ->
       Neigs = tree:getNeigs(ForNodeId, Tree),
-      io: format("Neighbors are ~p~n", [Neigs]),
+      %io: format("Neighbors are ~p~n", [Neigs]),
       From ! { getPeersOk, { Neigs }  },
       listenT(NodeId, Tree)
   end.
 
 listenL(NodeId, H) ->
-  io:format("Bootstrap server is listening...~n", []),
+  %io:format("Bootstrap server is listening...~n", []),
   receive
-    {join, From } ->
-        io: format("Latest list is ~p~n", [[NodeId]++H]),
+    { join, From } ->
+        %io: format("Latest list is ~p~n", [[NodeId]++H]),
+        From ! { joinOk, NodeId },
         listenL(NodeId + 1 , [NodeId]++H);
-    {getPeers, { From, ForNodeId } } ->
+    { getPeers, { From, ForNodeId } } ->
         Neigs = [linkList:search(H, ForNodeId, false), linkList:search(reverse(H), ForNodeId, false)],
-        io: format("Neighbors are ~p~n", [Neigs]),
+        %io: format("Neighbors are ~p~n", [Neigs]),
         From ! {getPeersOk, { Neigs } },
         listenL(NodeId, H)
   end.

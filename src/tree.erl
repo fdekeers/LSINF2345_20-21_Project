@@ -26,6 +26,9 @@ add(N, { ParentId, Side }, { M, { F, Ls, Rs } }) ->
 
 
 getNeigs(_, nil) -> [];
+% When node is the root
+getNeigs(N, { N, {nil, Ls, Rs}}) ->
+  lists:nthtail(1, getNeigs(N, { N, { -1, Ls, Rs}}));
 % when node N is a leaf
 getNeigs(N, { N, { ParentId, nil, nil } }) ->
   [ ParentId ];

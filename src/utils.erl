@@ -1,11 +1,35 @@
 - module (utils).
-- export ([selectPeer/2, propagateView/5, randomReduceToN/2]).
+- export ([buildInitView/2,
+           pickRandom/1,
+           permute/2,
+           selectPeer/2,
+           selectBuffer/5,
+           receivedBuffer/7,
+           selectView/5]).
+
 
 %%% UTILITARY FUNCTIONS %%%
+
+% Returns the initial view of a node, that contains its initial neighbors
+% in the data structure (tree or linked-list).
+% The cycle of all the neighbors in the initial view is 0.
+buildInitView(Nodes, Neighbors) ->
+  buildInitView(Nodes, Neighbors, []).
+buildInitView([], _, Acc) ->
+  lists:reverse(Acc);
+buildInitView([{NodeId, NodePid}|T], Neighbors, Acc) ->
+  IsMember = lists:member(NodeId, Neighbors),
+  if
+    IsMember ->
+      buildInitView(T, Neighbors, [{NodeId, NodePid, 0}|Acc]);
+    true ->
+      buildInitView(T, Neighbors, Acc)
+  end.
+
 % Sorts the view by decreasing order of freshness.
 sort(View) ->
   % Anonymous sorting function, based on the freshness.
-  Fun = fun({_, CycleA}, {_, CycleB}) -> CycleA >= CycleB end,
+  Fun = fun({_, _, CycleA}, {_, _, CycleB}) -> CycleA >= CycleB end,
   lists:sort(Fun, View).
 
 % Gets a random element from a list.
@@ -22,7 +46,7 @@ pickRandom(List) ->
 %   - Build the resulting list: Taken elements + remaining elements + old elements
 permute(View, H) ->
   SortedView = sort(View),
-  IndexH = length(SortedView) - H,
+  IndexH = max(0, length(SortedView) - H),
   OldestPeers = lists:nthtail(IndexH, SortedView),
   FreshestPeers = lists:sublist(SortedView, IndexH),
   {Taken, FRemaining, ORemaining} = takeNRandomPeers(FreshestPeers, OldestPeers, 3),
@@ -41,22 +65,12 @@ takeNRandomPeers(FreshestPeers, OldestPeers, 0, Acc) ->
 takeNRandomPeers([], OldestPeers, N, Acc) ->
   Peer = pickRandom(OldestPeers),
   NewOldestPeers = lists:delete(Peer, OldestPeers),
-  {PeerPid, _} = Peer,
-  takeNRandomPeers([], NewOldestPeers, N-1, [PeerPid|Acc]);
+  takeNRandomPeers([], NewOldestPeers, N-1, [Peer|Acc]);
 % Take from the freshest peers.
 takeNRandomPeers(FreshestPeers, OldestPeers, N, Acc) ->
   Peer = pickRandom(FreshestPeers),
   NewFreshestPeers = lists:delete(Peer, FreshestPeers),
-  {PeerPid, _} = Peer,
-  takeNRandomPeers(NewFreshestPeers, OldestPeers, N-1, [PeerPid|Acc]).
-
-% Adds the cycle to the list of peers.
-setCycle(Peers, Cycle) ->
-  setCycle(Peers, Cycle, []).
-setCycle([], _, Acc) ->
-  lists:reverse(Acc);
-setCycle([H|T], Cycle, Acc) ->
-  setCycle(T, Cycle, [{H, Cycle}|Acc]).
+  takeNRandomPeers(NewFreshestPeers, OldestPeers, N-1, [Peer|Acc]).
 
 
 %%% PEER SELECTION %%%
@@ -71,72 +85,81 @@ selectPeer(Peers, tail) ->
   pickOldestPeer(Peers).
 
 % Returns the oldest node from the list of peers.
-% A peer is a tuple {PeerId, Cycle}.
+% A peer is a tuple {PeerId, PeerPid, Cycle}.
 % The oldest peer is the one with the smallest Cycle.
 pickOldestPeer(Peers) ->
-  pickOldestPeer(Peers, {0, infinity}).
-pickOldestPeer([{HId, HCycle}|T], {PeerId, Cycle}) ->
+  pickOldestPeer(Peers, {0, 0, infinity}).
+pickOldestPeer([], Peer) ->
+  Peer;
+pickOldestPeer([{HId, HPid, HCycle}|T], {PeerId, PeerPid, PeerCycle}) ->
   if
-    HCycle =< Cycle ->
-      pickOldestPeer(T, {HId, HCycle});
+    HCycle =< PeerCycle ->
+      pickOldestPeer(T, {HId, HPid, HCycle});
     true ->
-      pickOldestPeer(T, {PeerId, Cycle})
-  end;
-pickOldestPeer([], {PeerId, Cycle}) ->
-  {PeerId, Cycle}.
-
-
-%%% VIEW PROPAGATION %%%
-propagateView(FromPid, PeerPid, Cycle, View, {push, H, _}) ->
-  pushView(FromPid, PeerPid, Cycle, View, H);
-propagateView(FromPid, PeerPid, Cycle, View, {pushpull, H, S}) ->
-  pushPullView(FromPid, PeerPid, Cycle, View, {H, S}).
-
-pushView(FromPid, PeerPid, Cycle, View, H) ->
-  PermutedView = permute(View, H),
-  PeersToSend = lists:sublist(PermutedView, 3),
-  PeerPid ! {FromPid, Cycle, PeersToSend},
-  View.
-
-pushPullView(FromPid, PeerPid, Cycle, View, {H, S}) ->
-  pushView(FromPid, PeerPid, Cycle, View, H),
-  receive
-    {PeerPid, PeerCycle, PeersSent} ->
-      PeerView = setCycle(PeersSent, PeerCycle),
-      selectView(View, PeerView, H, S)
+      pickOldestPeer(T, {PeerId, PeerPid, PeerCycle})
   end.
 
 
+%%% VIEW PROPAGATION %%%
+
+% Selects the buffer to send.
+% Returns the permuted view, and the buffer to send.
+selectBuffer(FromId, FromPid, Cycle, View, H) ->
+  ThisPeer = {FromId, FromPid, Cycle},
+  PermutedView = permute(View, H),
+  {PermutedView, [ThisPeer] ++ lists:sublist(PermutedView, 3)}.
+
+% Received a buffer from a peer.
+% If propagate strategy is push, returns the updated view.
+% If pushpull, first send local buffer, then returns the updated view.
+receivedBuffer(_, NodePid, _, _, View, ReceivedBuffer, {push, H, S}) ->
+  selectView(NodePid, View, ReceivedBuffer, H, S);
+receivedBuffer(NodeId, NodePid, FromPid, Cycle, View, ReceivedBuffer, {pushpull, H, S}) ->
+  {PermutedView, Buffer} = selectBuffer(NodeId, NodePid, Cycle, View, H),
+  FromPid ! {response, Buffer},
+  selectView(NodePid, PermutedView, ReceivedBuffer, H, S).
+
+
 %%% VIEW SELECTION %%%
-selectView(View, PeerView, H, S) ->
-  FullView = View ++ PeerView,
+
+% Updates the current view, based on the received view and the H and S parameters.
+selectView(Pid, View, ReceivedBuffer, H, S) ->
+  FunRemovePid = fun({_, ElemPid, _}) -> ElemPid =/= Pid end,
+  ReceivedBufferWithoutPid = lists:filter(FunRemovePid, ReceivedBuffer),
+  FullView = View ++ ReceivedBufferWithoutPid,
   FullViewUnique = removeDuplicates(FullView),
-  FullViewH = removeHOldest(FullViewUnique, H),
-  FullViewS = removeSFirst(FullViewH, S),
-  FinalView = randomReduceToN(FullViewS, 7),
-  FinalView.
+  % Remove the H oldest peers, or until the view size is 7
+  FullViewH = removeNOldest(FullViewUnique, max(0, min(H, length(FullViewUnique)-7))),
+  % Remove the S first peers in the view, or until the view size is 7
+  FullViewS = removeNFirst(FullViewH, max(0, min(S, length(FullViewH)-7))),
+  % Remove random elements until the view size is 7
+  randomReduceToN(FullViewS, 7).
+
 
 % Removes the elements of the view that have the same Pid, but that are older.
 keepFresher(View, Peer, Index) ->
   keepFresher(View, Peer, Index, 0, []).
 keepFresher([], _, _, _, Acc) ->
   lists:reverse(Acc);
-keepFresher([{BasePid, BaseCycle}|T], {BasePid, BaseCycle}, BaseIndex, CurIndex, Acc) ->
+keepFresher([BasePeer|T], BasePeer, BaseIndex, CurIndex, Acc) ->
+  % The same peer with the same age is present more than once, keep the first one
   if
     CurIndex > BaseIndex ->
-      keepFresher(T, {BasePid, BaseCycle}, BaseIndex, CurIndex+1, Acc);
+      keepFresher(T, BasePeer, BaseIndex, CurIndex+1, Acc);
     true ->
-      keepFresher(T, {BasePid, BaseCycle}, BaseIndex, CurIndex+1, [{BasePid, BaseCycle}|Acc])
+      keepFresher(T, BasePeer, BaseIndex, CurIndex+1, [BasePeer|Acc])
   end;
-keepFresher([{BasePid, CurCycle}|T], {BasePid, BaseCycle}, BaseIndex, CurIndex, Acc) ->
+keepFresher([{BaseId, BasePid, CurCycle}|T], {BaseId, BasePid, BaseCycle}, BaseIndex, CurIndex, Acc) ->
+  % The same peer is present more than once, keep the freshest one
   if
     CurCycle < BaseCycle ->
-      keepFresher(T, {BasePid, BaseCycle}, BaseIndex, CurIndex+1, Acc);
+      keepFresher(T, {BaseId, BasePid, BaseCycle}, BaseIndex, CurIndex+1, Acc);
     true ->
-      keepFresher(T, {BasePid, BaseCycle}, BaseIndex, CurIndex+1, [{BasePid, CurCycle}|Acc])
+      keepFresher(T, {BaseId, BasePid, BaseCycle}, BaseIndex, CurIndex+1, [{BaseId, BasePid, CurCycle}|Acc])
   end;
-keepFresher([H|T], Peer, BaseIndex, CurIndex, Acc) ->
-  keepFresher(T, Peer, BaseIndex, CurIndex+1, [H|Acc]).
+keepFresher([CurPeer|T], BasePeer, BaseIndex, CurIndex, Acc) ->
+  % The two compared peers are different, keep both
+  keepFresher(T, BasePeer, BaseIndex, CurIndex+1, [CurPeer|Acc]).
 
 % Removes duplicates of the same Pid, by keeping the freshest one.
 removeDuplicates(View) ->
@@ -148,26 +171,26 @@ removeDuplicates([H|T], Index, ResultView) ->
 
 % Removes the oldest Peer from the view.
 removeOldest(View) ->
-  removeOldest(View, View, {0, infinity}).
+  removeOldest(View, View, {0, 0, infinity}).
 removeOldest(BaseView, [], Oldest) ->
   lists:delete(Oldest, BaseView);
-removeOldest(BaseView, [{Pid, Cycle}|T], {OldestPid, OldestCycle}) ->
+removeOldest(BaseView, [{Id, Pid, Cycle}|T], {OldestId, OldestPid, OldestCycle}) ->
   if
     Cycle =< OldestCycle ->
-      removeOldest(BaseView, T, {Pid, Cycle});
+      removeOldest(BaseView, T, {Id, Pid, Cycle});
     true ->
-      removeOldest(BaseView, T, {OldestPid, OldestCycle})
+      removeOldest(BaseView, T, {OldestId, OldestPid, OldestCycle})
   end.
 
-% Removes the H oldest peers from the view.
-removeHOldest(View, 0) ->
+% Removes the N oldest peers from the view.
+removeNOldest(View, 0) ->
   View;
-removeHOldest(View, H) ->
-  removeHOldest(removeOldest(View), H-1).
+removeNOldest(View, N) ->
+  removeNOldest(removeOldest(View), N-1).
 
-% Removes the S first peers from the view.
-removeSFirst(View, S) ->
-  lists:nthtail(length(View)-S-1, View).
+% Removes the N first peers from the view.
+removeNFirst(View, N) ->
+  lists:nthtail(N, View).
 
 % Removes random elements from the view, until the size of the view is N.
 randomReduceToN(View, N) ->
