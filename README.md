@@ -1,7 +1,7 @@
 # LSINF2345 Project: The Peer Sampling Service (Group E)
 
 We are the group E, composed of:
-- BOGAERT Jérémie ()
+- BOGAERT Jérémie (5287-1500)
 - DE KEERSMAEKER François (7367-1600)
 
 This report will present our work for the project for the course LSINF2345 -

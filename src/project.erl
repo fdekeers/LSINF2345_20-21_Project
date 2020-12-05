@@ -1,7 +1,7 @@
 - module(project).
 - import(bootstrap_server, [listen/2]).
 - import(node, [join/2, getNeigs/3, listen/4]).
-- export([main/1]).
+- export([launch/3, main/1]).
 
 %%% MAIN FUNCTION %%%
 % Launches the program with the command line arguments,
@@ -13,15 +13,16 @@
 %   - H (int): self-healing parameter
 %   - S (int): swapping parameter
 main(Args) ->
-  [NStr, StructStr, SelectionStr, PropagationStr, HStr, SStr] = Args,
+  [NStr, StructStr, SizeStr, SelectionStr, PropagationStr, HStr, SStr] = Args,
   % Convert arguments, that are all strings, to the correct data type
   N = list_to_integer(NStr),
   Struct = list_to_atom(StructStr),
+  ViewSize = list_to_integer(SizeStr),
   Selection = list_to_atom(SelectionStr),
   Propagation = list_to_atom(PropagationStr),
   H = list_to_integer(HStr),
   S = list_to_integer(SStr),
-  Params = {Selection, Propagation, H, S},
+  Params = {ViewSize, Selection, Propagation, H, S},
   % Launch the project
   launch(N, Struct, Params).
 
@@ -59,7 +60,7 @@ launch(N, tree, Params) ->
   % Initialize nodes view
   initializeViews(BootServerPid, Nodes),
   % Experimental scenario
-  scenario(Nodes).
+  scenario(Nodes);
 % Starts the project with a double linked list as initial data structure.
 launch(N, linked_list, Params) ->
   % Create server with an empty tree
@@ -104,8 +105,9 @@ scenario(ActiveNodes, InactiveNodes, 150) ->
   timer:sleep(3000),
   scenario(NewActiveNodes, NewInactiveNodes, 151);
 
-scenario(_, _, 180) ->
+scenario(ActiveNodes, InactiveNodes, 180) ->
   % End of the scenario
+  stopScenario(ActiveNodes, InactiveNodes),
   stop;
 
 scenario(ActiveNodes, InactiveNodes, Cycle) ->
@@ -170,3 +172,9 @@ restartNodes(N, ActiveNodes, InactiveNodes, InitView) ->
   NodePid ! {start},
   NewActiveNodes = [{NodeId, NodePid}|ActiveNodes],
   restartNodes(N-1, NewActiveNodes, NewInactiveNodes, InitView).
+
+% Stops the scenario, sends the message stop to all nodes
+stopScenario(ActiveNodes, InactiveNodes) ->
+  FunStop = fun({_, NodePid}) -> NodePid ! {stop} end,
+  lists:foreach(FunStop, ActiveNodes),
+  lists:foreach(FunStop, InactiveNodes).

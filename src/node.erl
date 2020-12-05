@@ -22,55 +22,73 @@ getNeigs(BootServerPid, NodeId) ->
 %%% PEER SAMPLING SERVICE %%%
 
 % Node has not started the peer-sampling service yet
-listen(NodeId, down, View, {Selection, Propagation, H, S}) ->
+listen(NodeId, down, View, {ViewSize, Selection, Propagation, H, S}) ->
   receive
     {init, InitView} ->
       % Initialization of the node's view.
-      listen(NodeId, down, InitView, {Selection, Propagation, H, S});
+      listen(NodeId, down, InitView, {ViewSize, Selection, Propagation, H, S});
 
     {start} ->
       % Start of the peer-sampling service
-      listen(NodeId, up, View, {Selection, Propagation, H, S})
+      listen(NodeId, up, View, {ViewSize, Selection, Propagation, H, S});
+
+    {stop} ->
+      % Stop the scenario
+      stop
   end;
 
 % Node is running the peer-sampling service
-listen(NodeId, up, View, {Selection, Propagation, H, S}) ->
+listen(NodeId, up, View, {ViewSize, Selection, Propagation, H, S}) ->
   receive
     {active, Cycle} ->
       % Active section, selects the peer to contact, the subset of the
       % view to send, and send it.
       {_, PeerPid, _} = utils:selectPeer(View, Selection),
-      {PermutedView, Buffer} = utils:selectBuffer(NodeId, self(), Cycle, View, H),
+      {PermutedView, Buffer} = utils:selectBuffer(NodeId, self(), Cycle, View, {ViewSize, H}),
       PeerPid ! {push, self(), Cycle, Buffer},
-      NewView = listen(NodeId, waiting, PermutedView, {Selection, Propagation, H, S}),
-      log(Cycle, NodeId, NewView),
-      listen(NodeId, up, NewView, {Selection, Propagation, H, S});
+      NewView = listen(NodeId, waiting, PermutedView, {ViewSize, Selection, Propagation, H, S}),
+      %log(Cycle, NodeId, NewView),
+      listen(NodeId, up, NewView, {ViewSize, Selection, Propagation, H, S});
 
     {push, FromPid, Cycle, ReceivedBuffer} ->
       % Passive section, updates local view with received view.
       % If strategy is pushpull, first respond to sender with local buffer.
-      NewView = utils:receivedBuffer(NodeId, self(), FromPid, Cycle, View, ReceivedBuffer, {Propagation, H, S}),
-      listen(NodeId, up, NewView, {Selection, Propagation, H, S});
+      io:format("Node ~p, old view: ~p~n", [self(), View]),
+      io:format("Node ~p, received buffer: ~p~n", [self(), ReceivedBuffer]),
+      NewView = utils:receivedBuffer(NodeId, self(), FromPid, Cycle, View, ReceivedBuffer, {ViewSize, Propagation, H, S}),
+      io:format("Node ~p, new view: ~p~n", [self(), NewView]),
+      listen(NodeId, up, NewView, {ViewSize, Selection, Propagation, H, S});
 
-    {kill} ->
+    {crash} ->
       % Stop the peer-sampling service on the node
-      listen(NodeId, down, View, {Selection, Propagation, H, S})
+      listen(NodeId, down, View, {ViewSize, Selection, Propagation, H, S});
+
+    {stop} ->
+      % Stop the scenario
+      %log(180, NodeId, View),
+      stop
   end;
 
 % Passive section, node has sent its message and waits for a response.
 % Returns the new view after having handled all the received messages.
-listen(NodeId, waiting, View, {Selection, Propagation, H, S}) ->
+listen(NodeId, waiting, View, {ViewSize, Selection, Propagation, H, S}) ->
   receive
     {push, FromPid, Cycle, ReceivedBuffer} ->
       % Passive section, updates local view with received view.
       % If strategy is pushpull, first respond to sender with local buffer.
-      NewView = utils:receivedBuffer(NodeId, self(), FromPid, Cycle, View, ReceivedBuffer, {Propagation, H, S}),
-      listen(NodeId, waiting, NewView, {Selection, Propagation, H, S});
+      io:format("Node ~p, old view: ~p~n", [self(), View]),
+      io:format("Node ~p, received buffer: ~p~n", [self(), ReceivedBuffer]),
+      NewView = utils:receivedBuffer(NodeId, self(), FromPid, Cycle, View, ReceivedBuffer, {ViewSize, Propagation, H, S}),
+      io:format("Node ~p, new view: ~p~n", [self(), NewView]),
+      listen(NodeId, waiting, NewView, {ViewSize, Selection, Propagation, H, S});
 
     {response, ReceivedBuffer} ->
       % Received response to pushpull message, updates local view.
-      NewView = utils:selectView(self(), View, ReceivedBuffer, H, S),
-      listen(NodeId, waiting, NewView, {Selection, Propagation, H, S})
+      io:format("Node ~p, old view: ~p~n", [self(), View]),
+      io:format("Node ~p, received buffer: ~p~n", [self(), ReceivedBuffer]),
+      NewView = utils:selectView(self(), View, ReceivedBuffer, {ViewSize, H, S}),
+      io:format("Node ~p, new view: ~p~n", [self(), NewView]),
+      listen(NodeId, waiting, NewView, {ViewSize, Selection, Propagation, H, S})
   after 1500 ->
     View
   end.
