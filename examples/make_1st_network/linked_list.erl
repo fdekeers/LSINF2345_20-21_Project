@@ -1,4 +1,4 @@
--module(linkList).
+-module(linked_list).
 -export([loop/1, search/3]).
 -import(lists, [reverse/1]).
 

@@ -45,6 +45,13 @@ listen(NodeId, up, View, {Selection, Propagation, H, S}) ->
       NewView = listen(NodeId, waiting, PermutedView, {Selection, Propagation, H, S}),
       log(Cycle, NodeId, NewView),
       listen(NodeId, up, NewView, {Selection, Propagation, H, S});
+
+    {push, FromPid, Cycle, ReceivedBuffer} ->
+      % Passive section, updates local view with received view.
+      % If strategy is pushpull, first respond to sender with local buffer.
+      NewView = utils:receivedBuffer(NodeId, self(), FromPid, Cycle, View, ReceivedBuffer, {Propagation, H, S}),
+      listen(NodeId, up, NewView, {Selection, Propagation, H, S});
+
     {kill} ->
       % Stop the peer-sampling service on the node
       listen(NodeId, down, View, {Selection, Propagation, H, S})

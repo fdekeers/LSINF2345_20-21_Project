@@ -1,4 +1,4 @@
--module(linkList).
+-module(linked_list).
 -export([search/3]).
 
 
