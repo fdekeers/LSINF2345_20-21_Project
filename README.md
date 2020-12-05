@@ -27,7 +27,14 @@ assigned by the server when the node is added to the structure.
 To enable interaction, the server allows the reception of two messages, sent by a node:
 - join, that adds the node to the data structure, and responds to it with its ID;
 - getPeers(NodeId), that gets and responds with the neighbors of the node
-corresponding to the node ID sent along the message.
+corresponding to the node ID sent along the message.\
+
+The implementation of the server is available in the file [bootstrap_server](src/bootstrap_server.erl).
+The file [tree](src/tree.erl) contains the core implementation of the binary tree,
+and the file [linked_list](src/linked_list.erl) contains the implementation of the
+double linked list.
+The binary tree implementation is the one that was given in the [examples](examples/) folder,
+with a small modification such that the atom `nil` is not contained in the neighbors of the root.
 
 
 ## Peer sampling service implementation
