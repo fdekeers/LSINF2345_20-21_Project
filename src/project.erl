@@ -8,6 +8,7 @@
 % which are specified in the following order:
 %   - N (int): maximum number of nodes in the network
 %   - Struct (atom): tree or linked_list, specifies the data structure to use
+%   - ViewSize (int): maximum size of the view
 %   - Selection (atom): tail or rand, specifies the peer selection
 %   - Propagation (atom): push or pushpull, specifies the peer selection
 %   - H (int): self-healing parameter
