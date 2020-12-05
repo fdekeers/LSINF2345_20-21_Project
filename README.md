@@ -6,7 +6,8 @@ We are the group E, composed of:
 
 This report will present our work for the project for the course LSINF2345 -
 Languages and Algorithms for Distributed Applications,
-which covers the peer sampling service in a network of nodes.\
+which covers the peer sampling service in a network of nodes.
+
 The contents of this report are the following:
 - Deployment of a bootstrap network, with the help of a specific data structure;
 - Peer sampling service implementation;
@@ -22,7 +23,7 @@ Before starting the peer sampling service, a first network of nodes has to be de
 To represent this first network, we can use 2 data structures: a binary tree, or a double linked list.
 All the nodes will be added to the data structure before starting the service.
 In this way, all the nodes have a non empty view when they start the service,
-and can directly exchange with their peers.\
+and can directly exchange with their peers.
 
 To implement these data structures in practice, we use an Erlang node that will act as a server.
 Every node in the structure is simply represented by an increasing ID,
@@ -30,7 +31,7 @@ assigned by the server when the node is added to the structure.
 To enable interaction, the server allows the reception of two messages, sent by a node:
 - join, that adds the node to the data structure, and responds to it with its ID;
 - getPeers(NodeId), that gets and responds with the neighbors of the node
-corresponding to the node ID sent along the message.\
+corresponding to the node ID sent along the message.
 
 The implementation of the server is available in the file [bootstrap_server](src/bootstrap_server.erl).
 The file [tree](src/tree.erl) contains the core implementation of the binary tree,
@@ -47,7 +48,7 @@ The implementation of the peer sampling service is available in the Erlang files
 The first one contains the code related to the handling of messages received by
 the nodes, and the logging.
 The second one contains a lot of functions that are used for the peer sampling service,
-including function for the peer selection, the view propagation, and the view selection.\
+including function for the peer selection, the view propagation, and the view selection.
 
 In practice, a node has 3 states:
 - `down`, when it has been created, but is not running the peer sampling service,
