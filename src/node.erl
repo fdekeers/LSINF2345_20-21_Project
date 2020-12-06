@@ -47,16 +47,13 @@ listen(NodeId, up, View, {ViewSize, Selection, Propagation, H, S}) ->
       {PermutedView, Buffer} = utils:selectBuffer(NodeId, self(), Cycle, View, {ViewSize, H}),
       PeerPid ! {push, self(), Cycle, Buffer},
       NewView = listen(NodeId, waiting, PermutedView, {ViewSize, Selection, Propagation, H, S}),
-      %log(Cycle, NodeId, NewView),
+      log(Cycle, NodeId, NewView),
       listen(NodeId, up, NewView, {ViewSize, Selection, Propagation, H, S});
 
     {push, FromPid, Cycle, ReceivedBuffer} ->
       % Passive section, updates local view with received view.
       % If strategy is pushpull, first respond to sender with local buffer.
-      io:format("Node ~p, old view: ~p~n", [self(), View]),
-      io:format("Node ~p, received buffer: ~p~n", [self(), ReceivedBuffer]),
       NewView = utils:receivedBuffer(NodeId, self(), FromPid, Cycle, View, ReceivedBuffer, {ViewSize, Propagation, H, S}),
-      io:format("Node ~p, new view: ~p~n", [self(), NewView]),
       listen(NodeId, up, NewView, {ViewSize, Selection, Propagation, H, S});
 
     {crash} ->
@@ -65,7 +62,7 @@ listen(NodeId, up, View, {ViewSize, Selection, Propagation, H, S}) ->
 
     {stop} ->
       % Stop the scenario
-      %log(180, NodeId, View),
+      log(180, NodeId, View),
       stop
   end;
 
@@ -76,18 +73,12 @@ listen(NodeId, waiting, View, {ViewSize, Selection, Propagation, H, S}) ->
     {push, FromPid, Cycle, ReceivedBuffer} ->
       % Passive section, updates local view with received view.
       % If strategy is pushpull, first respond to sender with local buffer.
-      io:format("Node ~p, old view: ~p~n", [self(), View]),
-      io:format("Node ~p, received buffer: ~p~n", [self(), ReceivedBuffer]),
       NewView = utils:receivedBuffer(NodeId, self(), FromPid, Cycle, View, ReceivedBuffer, {ViewSize, Propagation, H, S}),
-      io:format("Node ~p, new view: ~p~n", [self(), NewView]),
       listen(NodeId, waiting, NewView, {ViewSize, Selection, Propagation, H, S});
 
     {response, ReceivedBuffer} ->
       % Received response to pushpull message, updates local view.
-      io:format("Node ~p, old view: ~p~n", [self(), View]),
-      io:format("Node ~p, received buffer: ~p~n", [self(), ReceivedBuffer]),
       NewView = utils:selectView(self(), View, ReceivedBuffer, {ViewSize, H, S}),
-      io:format("Node ~p, new view: ~p~n", [self(), NewView]),
       listen(NodeId, waiting, NewView, {ViewSize, Selection, Propagation, H, S})
   after 1500 ->
     View

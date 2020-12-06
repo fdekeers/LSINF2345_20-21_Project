@@ -11,7 +11,7 @@ compile: clean
 run: compile
 	# Run project with healer policy (H=4 and S=3)
 	@erl -noshell -run project main 20 tree 7 rand pushpull 4 3 -s init stop > ../graphs/healer.data
-	# Run project with swapper policy (H=3 and S=4)
+	# Run project with swapper policy (H=0 and S=4)
 	@erl -noshell -run project main 20 tree 7 rand pushpull 0 4 -s init stop > ../graphs/swapper.data
 
 .PHONY: clean
