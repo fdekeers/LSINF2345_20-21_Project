@@ -33,7 +33,27 @@ Main process:
   - Maintains a list of all the nodes in the network.
   - Chooses the nodes that will crash
 
-Logs:
-  - Cycle, NodeID, View
 
 Timer: learnyousomeerlang.com/more-on-multiprocessing#state-your-state
+
+
+Tests
+
+Node <0.101.0>, old view: [{12,<0.106.0>,179},
+                           {18,<0.112.0>,178},
+                           {8,<0.102.0>,179},
+                           {13,<0.107.0>,178},
+                           {4,<0.98.0>,178},
+                           {2,<0.96.0>,179},
+                           {9,<0.103.0>,178}]
+Node <0.101.0>, received buffer: [{6,<0.100.0>,179},
+                                  {15,<0.109.0>,178},
+                                  {16,<0.110.0>,178},
+                                  {17,<0.111.0>,179}]
+Node <0.101.0>, new view: [{12,<0.106.0>,179},
+                           {18,<0.112.0>,178},
+                           {8,<0.102.0>,179},
+                           {13,<0.107.0>,178},
+                           {2,<0.96.0>,179},
+                           {6,<0.100.0>,179},
+                           {17,<0.111.0>,179}]

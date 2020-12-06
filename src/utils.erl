@@ -1,11 +1,10 @@
 - module (utils).
 - export ([buildInitView/2,
            pickRandom/1,
-           permute/2,
            selectPeer/2,
            selectBuffer/5,
            receivedBuffer/7,
-           selectView/5]).
+           selectView/4]).
 
 
 %%% UTILITARY FUNCTIONS %%%
@@ -38,21 +37,22 @@ pickRandom(List) ->
   lists:nth(Rand, List).
 
 % Permute: put the H oldest elements at the end,
-% and the elements that will be sent at the beginning.
+% and the N elements that will be sent at the beginning.
 %   - Sort the list based on freshness
 %   - Build a list with the H oldest elements (the last elements)
 %   - Build a list without the H oldest elements (the first elements)
-%   - Take 3 random elements from the second list, build a list with them
+%   - Take N random elements from the second list, build a list with them
 %   - Build the resulting list: Taken elements + remaining elements + old elements
-permute(View, H) ->
+permute(View, N, H) ->
   SortedView = sort(View),
   IndexH = max(0, length(SortedView) - H),
   OldestPeers = lists:nthtail(IndexH, SortedView),
   FreshestPeers = lists:sublist(SortedView, IndexH),
-  {Taken, FRemaining, ORemaining} = takeNRandomPeers(FreshestPeers, OldestPeers, 3),
+  {Taken, FRemaining, ORemaining} = takeNRandomPeers(FreshestPeers, OldestPeers, N),
   Taken ++ FRemaining ++ ORemaining.
 
 % Takes N random peers from the view, by starting with the freshest peers.
+% Returns the peers taken, the remaining fresh peers, and the remaining old peers.
 takeNRandomPeers(FreshestPeers, OldestPeers, N) ->
   takeNRandomPeers(FreshestPeers, OldestPeers, N, []).
 % Both lists are empty, return even if there are not enough peers.
@@ -102,38 +102,41 @@ pickOldestPeer([{HId, HPid, HCycle}|T], {PeerId, PeerPid, PeerCycle}) ->
 
 %%% VIEW PROPAGATION %%%
 
-% Selects the buffer to send.
+% Selects the buffer to send, by permuting the view.
 % Returns the permuted view, and the buffer to send.
-selectBuffer(FromId, FromPid, Cycle, View, H) ->
+selectBuffer(FromId, FromPid, Cycle, View, {ViewSize, H}) ->
   ThisPeer = {FromId, FromPid, Cycle},
-  PermutedView = permute(View, H),
-  {PermutedView, [ThisPeer] ++ lists:sublist(PermutedView, 3)}.
+  N = round(math:ceil((ViewSize/2) - 1)),
+  PermutedView = permute(View, N, H),
+  {PermutedView, [ThisPeer] ++ lists:sublist(PermutedView, N)}.
 
 % Received a buffer from a peer.
 % If propagate strategy is push, returns the updated view.
 % If pushpull, first send local buffer, then returns the updated view.
-receivedBuffer(_, NodePid, _, _, View, ReceivedBuffer, {push, H, S}) ->
-  selectView(NodePid, View, ReceivedBuffer, H, S);
-receivedBuffer(NodeId, NodePid, FromPid, Cycle, View, ReceivedBuffer, {pushpull, H, S}) ->
-  {PermutedView, Buffer} = selectBuffer(NodeId, NodePid, Cycle, View, H),
+receivedBuffer(_, NodePid, _, _, View, ReceivedBuffer, {ViewSize, push, H, S}) ->
+  selectView(NodePid, View, ReceivedBuffer, {ViewSize, H, S});
+receivedBuffer(NodeId, NodePid, FromPid, Cycle, View, ReceivedBuffer, {ViewSize, pushpull, H, S}) ->
+  {PermutedView, Buffer} = selectBuffer(NodeId, NodePid, Cycle, View, {ViewSize, H}),
   FromPid ! {response, Buffer},
-  selectView(NodePid, PermutedView, ReceivedBuffer, H, S).
+  selectView(NodePid, PermutedView, ReceivedBuffer, {ViewSize, H, S}).
 
 
 %%% VIEW SELECTION %%%
 
 % Updates the current view, based on the received view and the H and S parameters.
-selectView(Pid, View, ReceivedBuffer, H, S) ->
+selectView(Pid, View, ReceivedBuffer, {ViewSize, H, S}) ->
   FunRemovePid = fun({_, ElemPid, _}) -> ElemPid =/= Pid end,
   ReceivedBufferWithoutPid = lists:filter(FunRemovePid, ReceivedBuffer),
   FullView = View ++ ReceivedBufferWithoutPid,
   FullViewUnique = removeDuplicates(FullView),
-  % Remove the H oldest peers, or until the view size is 7
-  FullViewH = removeNOldest(FullViewUnique, max(0, min(H, length(FullViewUnique)-7))),
-  % Remove the S first peers in the view, or until the view size is 7
-  FullViewS = removeNFirst(FullViewH, max(0, min(S, length(FullViewH)-7))),
+  % Remove the H oldest peers,
+  % or remove the oldest peers until the maximum view size has been reached.
+  FullViewH = removeNOldest(FullViewUnique, max(0, min(H, length(FullViewUnique)-ViewSize))),
+  % Remove the S first peers in the view,
+  %or remove the first peers until the maximum view size has been reached.
+  FullViewS = removeNFirst(FullViewH, max(0, min(S, length(FullViewH)-ViewSize))),
   % Remove random elements until the view size is 7
-  randomReduceToN(FullViewS, 7).
+  randomReduceToN(FullViewS, ViewSize).
 
 
 % Removes the elements of the view that have the same Pid, but that are older.
