@@ -65,7 +65,7 @@ launch(N, tree, Params) ->
 % Starts the project with a double linked list as initial data structure.
 launch(N, linked_list, Params) ->
   % Create server with an empty tree
-  BootServerPid = spawn(bootstrap_server, listenL, [ 0, nil ]),
+  BootServerPid = spawn(bootstrap_server, listenL, [ 0, [] ]),
   % Add all the nodes to the data structure
   Nodes = makeNet(N, BootServerPid, Params),
   % Initialize nodes view
