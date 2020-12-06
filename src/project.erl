@@ -25,6 +25,7 @@ main(Args) ->
   S = list_to_integer(SStr),
   Params = {ViewSize, Selection, Propagation, H, S},
   % Launch the project
+  io:format("MaxNodes:~w~n", [N]),
   launch(N, Struct, Params).
 
 

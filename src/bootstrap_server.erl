@@ -6,6 +6,8 @@
 - export([listenT/2, listenL/2, testL/0, testT/0]).
 
 
+%%% SERVER FUNCTIONS %%%
+
 listenT(NodeId, Tree) ->
   %io:format("Bootstrap tree server is listening...~p~n", [Tree]),
   receive
@@ -34,8 +36,7 @@ listenL(NodeId, H) ->
   end.
 
 
-
-
+%%% UNIT TESTS %%%
 
 testL() ->
   L_PID = spawn(bootstrap_server, listenL, [0, []]),

@@ -40,6 +40,11 @@ double linked list.
 The binary tree implementation is the one that was given in the [examples](examples/) folder,
 with a small modification such that the atom `nil` is not contained in the neighbors of the root.
 
+Some unit tests are also present at the end of the file [bootstrap_server](src/bootstrap_server.erl).
+They check if the nodes are correctly added to the data structure,
+and if the neighbors are the ones expected.
+To run these tests, simply run the command `make test` in the [src](src/) folder.
+
 
 ## Peer sampling service implementation
 
@@ -114,8 +119,8 @@ experimental scenarios.
 
 [JEREM, EXPLICATION DU CODE PYHTON ICI]
 
-Then, it produces a graph containing box-plots of the results,
-that is shown below:
+Then, it produces graph by policy, containing box-plots of the results.
+These graphs are shown below:
 
 ![graph](graphs/healer.png)
 ![graph](graphs/swapper.png)

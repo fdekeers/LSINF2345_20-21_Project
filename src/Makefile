@@ -17,6 +17,12 @@ run: compile
 graphs:
 	@python3 compute_indegree.py
 
+test: compile
+	# Unit tests for binary tree
+	@erl -noshell -run bootstrap_server testT -s init stop
+	# Unit tests for double linked list
+	@erl -noshell -run bootstrap_server testL -s init stop
+
 .PHONY: clean
 
 clean:
