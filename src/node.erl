@@ -89,7 +89,7 @@ listen(NodeId, waiting, View, {ViewSize, Selection, Propagation, H, S}) ->
 
 % Logs the cycle, the node ID, and the node's full view.
 log(Cycle, NodeId, View) ->
-  io:format("~p;~p;~p~n", [Cycle, NodeId, viewToLog(View)]).
+  io:format("~w;~w;~w~n", [Cycle, NodeId, viewToLog(View)]).
 
 % Converts the view into a printable list of peer IDs.
 viewToLog(View) ->

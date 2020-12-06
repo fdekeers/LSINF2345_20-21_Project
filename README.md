@@ -63,6 +63,15 @@ This message also contains the number of the current cycle,
 so that the node knows which is the current cycle.
 The duration of a cycle has been set to 3 seconds, as advised in the project statement.
 
+Every peer in the view of a node has an integer that defines its age.
+Instead of initializing the age of a node to 0 when it sends its descriptor to one of its peers,
+and incrementing the age of all the peers in the view at each cycle,
+we chose to use the cycle at which the descriptor was sent.
+In this way, the freshest peers are not the ones that have the lowest age, but the highest cycle,
+as this means that the descriptor was sent more recently.
+This avoids processing the whole view of each node at the end of each cycle
+to increment the age of each peer in the view.
+
 
 ## Evaluation with experimental scenario
 
@@ -96,13 +105,17 @@ The parameters that were changed are the following:
 - `H` = 4 and `S` = 3 for the first execution, i.e. the healer selection;
 - `H` = 0 and `S` = 4 for the first execution, i.e. the swapper selection.
 
-To run this Makefile, simply execute the `make` command in a terminal in the [src](src/) folder. The logs of the two execution are placed in the [graphs](graphs/) folder,
-in the files [healer.data](graphs/healer.data) and [healer.data](graphs/swapper.data), respectively.
+To run this Makefile, simply execute the `make` command in a terminal in the [src](src/) folder. The logs of the two execution are placed in the [graphs](results/) folder,
+in the files [healer.data](results/healer.data) and [healer.data](results/swapper.data), respectively.
 
-The post-processing pyhton script is available in the [script](graphs/script.py) file.
+The post-processing pyhton script is available in the [compute_indegree](src/compute_indegree.py) file.
 It computes the in-degree of each node in the network, every 20 cycles, for both
 experimental scenarios.
+
+[JEREM, EXPLICATION DU CODE PYHTON ICI]
+
 Then, it produces a graph containing box-plots of the results,
 that is shown below:
 
-![graph](graphs/graph.png)
+![graph](graphs/healer.png)
+![graph](graphs/swapper.png)
