@@ -129,3 +129,27 @@ These graphs are shown below:
 
 ![graph_healer](graphs/healer.png)
 ![graph_swapper](graphs/swapper.png)
+
+On both graphs, we see that the in-degree starts quite low.
+This is due to the fact that, initially,
+only a subset of the nodes are active,
+and the view of the nodes only contain their initial neighbors in the bootstrapping data structure.
+Then, the in-degree increases, as the nodes exchange their views with others,
+and thus increase the size of their views and the number of nodes they point to,
+which involves that, in general, the nodes have more other nodes that point to them,
+which increases their in-degree.
+Besides that, more nodes join the network, which adds to the number of links toward
+the nodes as well.
+
+At cycle 120, we observe that the in-degree drops drastically.
+This is due to the experimental scenario, that crashes a big amount of nodes at this cycle.
+As a result, the links coming out of these crashed nodes are not counted anymore,
+which reduces the general in-degree.
+
+At cycle 150, most of the crahsed nodes will be restarted,
+each having the same active node in their view.
+Thanks to that, one active node will have a high in-degree at this cycle.
+We can still see this on the 160th cycle of the healer policy graph,
+where there is an outlier with a very high in-degree.
+However, this cannot be seen in the swapper policy graph,
+as the swapping will remove this node from the view of the restarted nodes.

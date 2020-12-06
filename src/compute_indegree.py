@@ -26,7 +26,7 @@ for file in os.listdir("../results"):
 
     # Box-plots
     fig = plt.figure()
-    plt.title(f"In-degree of all the nodes in the network for the {policy} policy")
+    plt.title(f"In-degree of all the nodes for the {policy} policy")
     plt.xlabel("Cycle")
     plt.ylabel("In-degree")
     plt.boxplot(in_degree_table)
