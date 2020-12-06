@@ -116,11 +116,16 @@ in the files [healer.data](results/healer.data) and [healer.data](results/swappe
 The post-processing pyhton script is available in the [compute_indegree](src/compute_indegree.py) file.
 It computes the in-degree of each node in the network, every 20 cycles, for both
 experimental scenarios.
+To this end, we keep, a list of dictionaries, one for each of the measured cycles.
+Each dictionary contains key-value pairs, where the key is the node ID,
+and the value is the in-degree of the node.
+Then, to compute the in-degree, the logs of each measured cycle are processed,
+and every time a node contains a certain other node in its view for this cycle,
+the in-degree is incremented for this other node.
 
-[JEREM, EXPLICATION DU CODE PYHTON ICI]
-
-Then, it produces graph by policy, containing box-plots of the results.
+After having computed the in-degree of every node, for every relevant cycle,
+the script produces one graph by policy, containing box-plots of the results.
 These graphs are shown below:
 
-![graph](graphs/healer.png)
-![graph](graphs/swapper.png)
+![graph_healer](graphs/healer.png)
+![graph_swapper](graphs/swapper.png)

@@ -8,15 +8,6 @@ for file in os.listdir("../results"):
     policy = file.split('.')[0]  # Name of policy
     listDictForIndegree = [{} for i in range(10)]
     with open("../results/"+file, "r") as f:
-        # First line contains the maximum number of nodes
-        first_line = f.readline()
-        max_nodes = int(first_line.strip().split(':')[1])
-
-        # Initialize in-degree with 0 for every node
-        for i in range(10):
-            for node in range(max_nodes):
-                listDictForIndegree[i][node] = 0
-
         # Loop through the lines of the result file, to count the links
         for line in f:
             #format: Cycle;NodeID;[PeerID1,PeerID2,....]
