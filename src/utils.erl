@@ -1,6 +1,7 @@
 - module (utils).
 - export ([buildInitView/2,
            pickRandom/1,
+           sort/1,
            selectPeer/2,
            selectBuffer/5,
            receivedBuffer/7,
@@ -28,7 +29,7 @@ buildInitView([{NodeId, NodePid}|T], Neighbors, Acc) ->
 % Sorts the view by decreasing order of freshness.
 sort(View) ->
   % Anonymous sorting function, based on the freshness.
-  Fun = fun({_, _, CycleA}, {_, _, CycleB}) -> CycleA >= CycleB end,
+  Fun = fun({_, _, CycleA}, {_, _, CycleB}) -> CycleA > CycleB end,
   lists:sort(Fun, View).
 
 % Gets a random element from a list.
@@ -93,7 +94,7 @@ pickOldestPeer([], Peer) ->
   Peer;
 pickOldestPeer([{HId, HPid, HCycle}|T], {PeerId, PeerPid, PeerCycle}) ->
   if
-    HCycle =< PeerCycle ->
+    HCycle < PeerCycle ->
       pickOldestPeer(T, {HId, HPid, HCycle});
     true ->
       pickOldestPeer(T, {PeerId, PeerPid, PeerCycle})
