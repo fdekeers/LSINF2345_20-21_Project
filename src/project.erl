@@ -27,7 +27,6 @@ main(Args) ->
   % Launch the project
   launch(N, Struct, Params).
 
-
 % Creates the initial network, and return a list of all the nodes with their Pid.
 % More "Erlang-friendly" adaptation of the initial makeNet function.
 makeNet(N, BootServerPid, Params) ->
@@ -80,7 +79,7 @@ scenario(Nodes) ->
 
 scenario([], AllNodes, 0) ->
   % First cycle, bootstrapping phase
-  N = round(math:ceil(0.4 * length(AllNodes))),
+  N = round(trunc(0.4 * length(AllNodes))),
   {ActiveNodes, InactiveNodes} = startNodes(N, [], AllNodes),
   activateNodes(ActiveNodes, 0),
   timer:sleep(3000),
@@ -88,7 +87,7 @@ scenario([], AllNodes, 0) ->
 
 scenario(ActiveNodes, InactiveNodes, 120) ->
   % 120th cycle, crash 60% of the active nodes
-  N = round(math:ceil(0.6 * length(ActiveNodes))),
+  N = round(trunc(0.6 * length(ActiveNodes))),
   {NewActiveNodes, NewInactiveNodes} = crashNodes(N, ActiveNodes, InactiveNodes),
   % Activate active nodes
   activateNodes(NewActiveNodes, 120),
@@ -97,7 +96,7 @@ scenario(ActiveNodes, InactiveNodes, 120) ->
 
 scenario(ActiveNodes, InactiveNodes, 150) ->
   % 150th cycle, recovery phase
-  N = round(math:ceil(0.6 * length(InactiveNodes))),
+  N = round(trunc(0.6 * length(InactiveNodes))),
   {NodeId, NodePid} = utils:pickRandom(ActiveNodes),
   InitView = [{NodeId, NodePid, 150}],
   {NewActiveNodes, NewInactiveNodes} = restartNodes(N, ActiveNodes, InactiveNodes, InitView),
@@ -117,7 +116,7 @@ scenario(ActiveNodes, InactiveNodes, Cycle) ->
   if
     (Cycle =< 90) and (DivisibleBy30) ->
       % Growing phase, start 20% of the inactive nodes
-      N = round(math:ceil(0.2 * (length(ActiveNodes)+length(InactiveNodes)))),
+      N = round(trunc(0.2 * (length(ActiveNodes)+length(InactiveNodes)))),
       {NewActiveNodes, NewInactiveNodes} = startNodes(N, ActiveNodes, InactiveNodes),
       % Activate active nodes
       activateNodes(NewActiveNodes, Cycle),

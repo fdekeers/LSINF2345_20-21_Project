@@ -107,7 +107,7 @@ pickOldestPeer([{HId, HPid, HCycle}|T], {PeerId, PeerPid, PeerCycle}) ->
 % Returns the permuted view, and the buffer to send.
 selectBuffer(FromId, FromPid, Cycle, View, {ViewSize, H}) ->
   ThisPeer = {FromId, FromPid, Cycle},
-  N = round(math:ceil((ViewSize/2) - 1)),
+  N = round(trunc((ViewSize/2) - 1)),
   PermutedView = permute(View, N, H),
   {PermutedView, [ThisPeer] ++ lists:sublist(PermutedView, N)}.
 

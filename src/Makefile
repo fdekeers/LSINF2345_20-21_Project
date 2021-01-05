@@ -10,7 +10,7 @@ compile: clean
 
 run: compile
 	# Run project with healer policy (H=4 and S=3)
-	@erl -noshell -run project main 128 tree 7 rand pushpull 4 3 -s init stop > ../results/healer.data
+	@erl -noshell -run project main 128 tree 7 rand pushpull 3 4 -s init stop > ../results/healer.data
 	# Run project with swapper policy (H=3 and S=4)
 	@erl -noshell -run project main 128 tree 7 rand pushpull 3 4 -s init stop > ../results/swapper.data
 
